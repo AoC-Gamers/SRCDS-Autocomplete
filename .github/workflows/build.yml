@@ -308,6 +308,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v6
+      - name: Install x86 regression toolchain
+        run: sudo apt-get update && sudo apt-get install -y g++-multilib
       - run: make test-ci TEST_OUTPUT=.build/test-ci
 
   publish:

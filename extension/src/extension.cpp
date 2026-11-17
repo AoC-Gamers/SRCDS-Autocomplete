@@ -66,7 +66,7 @@ extern ISmmAPI *g_SMAPI;
 CDetour *receiveTab;
 DETOUR_DECL_MEMBER0(DetourReceiveTab, void)
 {
-	HandleReceiveTab((CTextConsole *)this);
+	HandleReceiveTab(reinterpret_cast<CTextConsole *>(this));
 }
 
 ICvar *icvar = NULL;
@@ -219,7 +219,7 @@ void AddFileSuggestionsFromDirectory(const char *partial,
 	if (dir == nullptr)
 		return;
 
-	struct dirent *entry = nullptr;
+	const struct dirent *entry = nullptr;
 	while ((entry = readdir(dir)) != nullptr)
 	{
 		const char *fileName = entry->d_name;
@@ -306,12 +306,12 @@ void *GetAddressFromKeyValues(void *pBaseAddr, IGameConfig *pGameConfig, const c
 
 #ifdef _LINUX
 	// The pointer returned by dlopen is not inside the loaded librarys memory region.
-	struct link_map *dlmap = (struct link_map *)pBaseAddr;
-	pBaseAddr = (void *)dlmap->l_addr;
+	const auto *dlmap = static_cast<const struct link_map *>(pBaseAddr);
+	pBaseAddr = reinterpret_cast<void *>(dlmap->l_addr);
 #endif
 
 	// Find that pattern in the pointed module.
-	return memutils->FindPattern(pBaseAddr, (char *)signature, real_bytes);
+	return memutils->FindPattern(pBaseAddr, reinterpret_cast<const char *>(signature), real_bytes);
 }
 
 bool AutoCompleteHook::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bool late)
@@ -421,7 +421,7 @@ static void GetSuggestions(const char *partial, const int numChars, CUtlVector<c
 		ICvar::Iterator iter(icvar);
 		for (iter.SetFirst(); iter.IsValid(); iter.Next())
 		{
-			ConCommandBase *cmd = iter.Get();
+			const ConCommandBase *cmd = iter.Get();
 			if (cmd->IsFlagSet(FCVAR_DEVELOPMENTONLY) || cmd->IsFlagSet(FCVAR_HIDDEN))
 				continue;
 
@@ -556,7 +556,7 @@ static void ReleaseDedicatedLibrary(void *dedicatedHandle)
 	if (dedicatedHandle)
 		dlclose(dedicatedHandle);
 #else
-	(void)dedicatedHandle;
+	static_cast<void>(dedicatedHandle);
 #endif
 }
 
@@ -717,17 +717,18 @@ static int DoAutocompletion(CTextConsole *tc, const char *consoleText, int conso
 	// Exactly one match. Fill in the rest of the command on the command line.
 	if (matches.Count() == 1)
 	{
-		const char * pszCmdName = matches[0];
-		const char * pszRest = &pszCmdName[consoleTextLen];
-		LogAutocompleteDebug("single match='%s' rest='%s'", pszCmdName, pszRest ? pszRest : "<null>");
+		const char *pszCmdName = matches[0];
+		// A provider may return a suggestion shorter than the input. Validate
+		// the offset; testing a pointer derived from an array cannot do that.
+		if (consoleTextLen < 0 || static_cast<size_t>(consoleTextLen) > strlen(pszCmdName))
+			return 0;
 
-		if (pszRest)
-		{
-			if (!InsertConsoleText(tc, pszRest, true))
-				return 0;
-			if (!InsertConsoleText(tc, " ", true))
-				return 0;
-		}
+		const char *pszRest = pszCmdName + consoleTextLen;
+		LogAutocompleteDebug("single match='%s' rest='%s'", pszCmdName, pszRest);
+		if (!InsertConsoleText(tc, pszRest, true))
+			return 0;
+		if (!InsertConsoleText(tc, " ", true))
+			return 0;
 
 		return 1;
 	}
@@ -767,37 +768,4 @@ static void __stdcall HandleReceiveTab(CTextConsole *tc)
 
 	tc->m_nCursorPosition = tc->m_nConsoleTextLen;
 	tc->m_nBrowseLine = tc->m_nInputLine;
-}
-
-// From SM's stringutil.cpp
-size_t UTIL_DecodeHexString(unsigned char *buffer, size_t maxlength, const char *hexstr)
-{
-	size_t written = 0;
-	size_t length = strlen(hexstr);
-
-	for (size_t i = 0; i < length; i++)
-	{
-		if (written >= maxlength)
-			break;
-		buffer[written++] = hexstr[i];
-		if (hexstr[i] == '\\' && (i + 1) < length && hexstr[i + 1] == 'x')
-		{
-			if (i + 3 >= length)
-				continue;
-			/* Get the hex part. */
-			char s_byte[3];
-			int r_byte;
-			s_byte[0] = hexstr[i + 2];
-			s_byte[1] = hexstr[i + 3];
-			s_byte[2] = '\0';
-			/* Read it as an integer */
-			sscanf(s_byte, "%x", &r_byte);
-			/* Save the value */
-			buffer[written - 1] = r_byte;
-			/* Adjust index */
-			i += 3;
-		}
-	}
-
-	return written;
 }

@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- Se corrige la decodificación hexadecimal de firmas: las secuencias malformadas
+  se conservan literales y no leen valores sin inicializar. Se mantienen bytes
+  NUL, límites del buffer y escapes válidos.
+- Se valida la longitud de una sugerencia antes de calcular el texto restante.
+- Se explicitan overrides, const y conversiones C++ sin cambiar la ABI de consola.
+
 - Se organizan scripts por dependencias, compilación, paquetes, CI y herramientas.
 - Se centraliza el mapa en `scripts/package/package-map.json` y se traslada el
   gamedata a su ruta SourceMod, sin cambiar su contenido ni destino de instalación.

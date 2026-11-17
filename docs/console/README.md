@@ -153,3 +153,10 @@ Resolución actual:
 
 
 Ver [límites del terminal](terminal.md).
+
+## Firmas de gamedata
+
+Las firmas decodifican escapes completos `\xHH` con dos dígitos hexadecimales;
+aceptan mayúsculas/minúsculas y bytes NUL. Secuencias truncadas o malformadas
+permanecen literales. El destino recibe como máximo su capacidad, sin terminador
+adicional, y la búsqueda usa la cantidad de bytes escritos.

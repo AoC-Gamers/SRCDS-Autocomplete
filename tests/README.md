@@ -13,3 +13,9 @@ funcionamiento de hooks, terminales o carga en SRCDS.
 
 `make sonar-tooling-test` prueba configuración, parser y contexto del analizador
 sin acceder al servidor. Es local y no forma parte de `make test-ci`.
+
+`make test-hex-string` compila el decodificador real en x86 con ASan/UBSan;
+comprueba los 256 bytes, escapes mixtos, malformados/truncados, capacidades y
+canarios. Forma parte de `test-ci`, que requiere GCC/G++ multilib y sanitizadores.
+`make test-exports ABI_BASELINE_ZIP=<zip-linux-anterior>` compara arquitectura ELF
+y nombres/tipos de símbolos exportados; no acredita toda la ABI ni carga SRCDS.
