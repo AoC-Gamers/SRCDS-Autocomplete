@@ -14,7 +14,14 @@ from urllib.parse import urlsplit
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
-SETTINGS = {"SONAR_HOST_URL", "SONAR_PROJECT_KEY", "SONAR_PROJECT_NAME",
+SCANNER_SETTINGS = {
+    "SONAR_SOURCE_ENCODING": ("sonar.sourceEncoding", "UTF-8"),
+    "SONAR_SOURCES": ("sonar.sources", "extension,scripts"),
+    "SONAR_EXCLUSIONS": ("sonar.exclusions", "**/__pycache__/**"),
+    "SONAR_CXX_FILE_SUFFIXES": ("sonar.cxx.file.suffixes", ".c,.cc,.cpp,.cxx,.h,.hh,.hpp,.hxx"),
+    "SONAR_CXX_ERROR_RECOVERY_ENABLED": ("sonar.cxx.errorRecoveryEnabled", "false"),
+}
+SETTINGS = set(SCANNER_SETTINGS) | {"SONAR_HOST_URL", "SONAR_PROJECT_KEY", "SONAR_PROJECT_NAME",
             "SONAR_QUALITY_GATE_WAIT", "SONAR_QUALITY_GATE_TIMEOUT",
             "SONAR_COMPILE_COMMANDS", "SONAR_CPPCHECK", "SONAR_SCANNER"}
 
@@ -63,6 +70,15 @@ def scanner_context(env):
     if not project.strip() or not name.strip():
         raise SonarError("SONAR_PROJECT_KEY y SONAR_PROJECT_NAME no pueden estar vacíos.")
     return base, project, name, wait, timeout
+
+
+def scanner_properties(env):
+    properties = {key: env.get(setting, default) for setting, (key, default) in SCANNER_SETTINGS.items()}
+    if properties["sonar.cxx.errorRecoveryEnabled"] != "false":
+        raise SonarError("SONAR_CXX_ERROR_RECOVERY_ENABLED debe ser false; el parser estricto es obligatorio.")
+    if any(not value.strip() for value in properties.values()):
+        raise SonarError("Las propiedades del análisis Sonar no pueden estar vacías.")
+    return [f"-D{key}={value}" for key, value in properties.items()]
 
 
 def compilation_database(root, path):
@@ -221,6 +237,7 @@ def validate_cppcheck(result, output, root, token):
 def run(action, default_database, root=ROOT):
     env = configuration(root)
     context = scanner_context(env) if action == "analyze" else None
+    properties = scanner_properties(env) if context else []
     cppcheck = executable(env.get("SONAR_CPPCHECK") or "cppcheck", root)
     scanner = executable(env.get("SONAR_SCANNER") or "sonar-scanner", root) if context else None
     database_path = Path(env.get("SONAR_COMPILE_COMMANDS") or default_database)
@@ -251,7 +268,7 @@ def run(action, default_database, root=ROOT):
         return
     base, project, name, wait, timeout = context
     # The token travels only in the scanner environment, never in argv/properties.
-    result = subprocess.run([scanner, f"-Dsonar.host.url={base}", f"-Dsonar.projectKey={project}",
+    result = subprocess.run([scanner, *properties, f"-Dsonar.host.url={base}", f"-Dsonar.projectKey={project}",
                              f"-Dsonar.projectName={name}",
                              f"-Dsonar.cxx.jsonCompilationDatabase={cxx_database}",
                              f"-Dsonar.cxx.cppcheck.reportPaths={report}",

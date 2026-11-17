@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- La configuración Sonar se carga desde `.env`, con plantilla pública `env.example`,
+  sin depender de `sonar-project.properties`; conserva el parser estricto.
+
 - Se corrige la decodificación hexadecimal de firmas: las secuencias malformadas
   se conservan literales y no leen valores sin inicializar. Se mantienen bytes
   NUL, límites del buffer y escapes válidos.

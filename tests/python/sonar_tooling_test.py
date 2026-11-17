@@ -3,12 +3,26 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[2]
 spec=importlib.util.spec_from_file_location('sonar',ROOT/'scripts/tools/make_sonar.py')
 sonar=importlib.util.module_from_spec(spec);spec.loader.exec_module(sonar)
 
 class Sonar(unittest.TestCase):
+    def test_dotenv_properties_without_project_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            (root/'.env').write_text('SONAR_SOURCES=extension\nSONAR_SOURCE_ENCODING=UTF-8\n')
+            with patch.dict('os.environ', {'SONAR_SOURCES':'extension,scripts'}, clear=True):
+                properties=sonar.scanner_properties(sonar.configuration(root))
+            self.assertIn('-Dsonar.sources=extension,scripts', properties)
+            self.assertIn('-Dsonar.sourceEncoding=UTF-8', properties)
+            self.assertIn('-Dsonar.cxx.errorRecoveryEnabled=false', properties)
+            self.assertFalse((root/'sonar-project.properties').exists())
+    def test_dotenv_cannot_enable_parser_recovery(self):
+        with self.assertRaises(sonar.SonarError):
+            sonar.scanner_properties({'SONAR_CXX_ERROR_RECOVERY_ENABLED':'true'})
     def test_remote_http_rejected(self):
         with self.assertRaises(sonar.SonarError):sonar.scanner_context({'SONAR_HOST_URL':'http://example.org','SONAR_TOKEN':'example'})
     def test_gate_cannot_be_disabled(self):

@@ -6,10 +6,13 @@ configurado y espera el quality gate. No se ejecuta en CI ni desde `make test`.
 
 Instala Cppcheck y SonarScanner explícitamente. El servidor debe tener un plugin
 sonar-cxx compatible; no es SonarCFamily. No se crean proyectos, tokens ni plugins
-automáticamente. Copia `.env.example` a `.env` y configura URL y proyecto propios;
+automáticamente. Copia `env.example` a `.env` y configura URL y proyecto propios;
 `SONAR_TOKEN` se aporta por entorno o `env.secret` ignorado (modo 600). No lo
 incluyas en argumentos ni documentación. HTTPS es obligatorio salvo loopback.
 Las variables de entorno tienen precedencia sobre los archivos locales.
+Todas las propiedades del análisis se cargan desde `.env` (plantilla `env.example`);
+el ejecutor las pasa al scanner sin necesitar `sonar-project.properties`.
+El parser estricto permanece obligatorio aunque se cambie la configuración local.
 
 ```bash
 make sonar-tooling-test
