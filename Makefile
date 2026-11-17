@@ -33,6 +33,9 @@ help:
 		'  make sonar-cppcheck       Analyze locally with the real build database' \
 		'  make sonar                Explicit configured Sonar analysis; waits for gate' \
 		'  make sonar-tooling-test   Offline analyzer tests (local only)' \
+		'  make test-python-coverage TEST_OUTPUT=<new-dir>  Measure canonical Python sources' \
+		'  make test-coverage TEST_OUTPUT=<new-dir>  Measure decoder and unexecuted native units' \
+		'  make coverage-tooling-test  Check source/report provenance (local only)' \
 		'  make help                 Show this help message' \
 		'  make deps-exts-linux      Fetch Linux extension dependencies into .deps/exts-linux/' \
 		'  make deps-exts-windows    Fetch Windows extension dependencies into .deps/exts-windows/' \
@@ -118,4 +121,19 @@ test-hex-string:
 
 .PHONY: test-exports
 test-exports:
-	$(PYTHON) "$(ROOT_DIR)/tests/runners/compare-exports.py" --baseline-zip "$(ABI_BASELINE_ZIP)" --current "$(LINUX_BUILD_DIR)/package/addons/sourcemod/extensions/autocomplete.ext.2.l4d2.so"
+	$(PYTHON) "$(ROOT_DIR)/tests/runners/compare-exports.py" --baseline-zip "$(ABI_BASELINE_ZIP)" --current "$(LINUX_BUILD_DIR)/package/addons/sourcemod/extensions/autocomplete.ext.2.l4d2.so" $(TEST_EXPORT_OPTIONS)
+
+.PHONY: deps-test-coverage test-python-coverage test-coverage coverage-tooling-test
+COVERAGE_VENV_DIR ?= $(ROOT_DIR)/.deps/test-coverage
+COVERAGE_PYTHON ?= $(COVERAGE_VENV_DIR)/bin/python
+deps-test-coverage:
+	PYTHON="$(PYTHON)" COVERAGE_VENV_DIR="$(COVERAGE_VENV_DIR)" bash "$(ROOT_DIR)/scripts/deps/fetch-test-coverage.sh"
+
+test-python-coverage:
+	"$(COVERAGE_PYTHON)" "$(ROOT_DIR)/tests/runners/test-python-coverage.py" --output "$(TEST_OUTPUT)"
+
+test-coverage:
+	$(PYTHON) "$(ROOT_DIR)/tests/runners/test-coverage.py" --output "$(TEST_OUTPUT)" --compile-commands "$(LINUX_BUILD_DIR)/compile_commands.json"
+
+coverage-tooling-test:
+	$(PYTHON) "$(ROOT_DIR)/tests/python/coverage_test.py"

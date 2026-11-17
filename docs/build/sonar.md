@@ -27,11 +27,31 @@ nueva en `.build/sonar/`; los errores de parser o XML incompleto impiden el env�
 El scanner usa parser estricto (`sonar.cxx.errorRecoveryEnabled=false`) y espera
 el gate; un fallo no se transforma en PASS ni se relajan umbrales.
 
-Esta integración no importa cobertura: no hay un harness nativo de producto que
-la mida actualmente. Las líneas sin ejecutar permanecen sin cobertura; compilar o
-contar assertions no mide ejecución. No aportar informes ajenos o antiguos para
-aprobar un gate. Un servidor sin configurar o un analizador ausente es un límite
-explícito, no un análisis aprobado. El análisis tampoco acredita aceptación SRCDS.
+La cobertura se mide explícitamente, fuera de CI, sobre fuentes canónicas:
+
+```bash
+make deps-test-coverage
+make test-python-coverage TEST_OUTPUT=.build/coverage-python
+make test-coverage TEST_OUTPUT=.build/coverage-native
+make coverage-tooling-test
+```
+
+`COVERAGE_PYTHON` permite usar un Python existente con coverage.py 7.13.5 sin
+instalar ni actualizar dependencias. Configura `SONAR_PYTHON_COVERAGE_RECEIPT`
+y `SONAR_COVERAGE_RECEIPT` con los recibos generados. Sonar comprueba hashes de
+fuentes/pruebas, informe y datos originales antes y después del envío. Un cambio
+relevante exige regenerar la cobertura; no se aceptan resultados desactualizados.
+
+Python mide líneas realmente ejecutadas, incluidos subprocesos; las copias de
+fuentes en directorios temporales de pruebas no aportan hits a las canónicas.
+GCC/gcov mide el decodificador real en x86 e incluye las demás unidades nativas
+como no ejecutadas. El código de consola que requiere SRCDS permanece sin hits.
+No se importan contadores de binarios mutados ni se estima cobertura desde la
+compilación. Las pruebas ASan/UBSan continúan por separado mediante `test-ci`.
+
+El gate mantiene sus umbrales. Cobertura parcial, errores de parser, un servidor
+sin configurar o herramientas ausentes no acreditan una validación aprobada.
+El análisis tampoco sustituye aceptación de carga y hooks en SRCDS.
 
 ## Avisos procedentes de proveedores externos
 

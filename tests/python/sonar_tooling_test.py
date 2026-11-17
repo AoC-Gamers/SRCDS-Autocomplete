@@ -1,4 +1,6 @@
 import importlib.util
+import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -23,6 +25,63 @@ class Sonar(unittest.TestCase):
     def test_dotenv_cannot_enable_parser_recovery(self):
         with self.assertRaises(sonar.SonarError):
             sonar.scanner_properties({'SONAR_CXX_ERROR_RECOVERY_ENABLED':'true'})
+    def test_scanner_success_with_parser_error_rejected(self):
+        result=subprocess.CompletedProcess([],0,'QUALITY GATE STATUS: PASSED','ERROR preprocessor: missing directory')
+        with self.assertRaises(sonar.SonarError):sonar.validate_scanner(result)
+    def test_analyzer_drops_only_absent_include_directories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'headers').mkdir()
+            entry={'directory':directory,'file':str(root/'unit.cpp'),
+                   'arguments':['c++','-m32','-Iheaders','-isystem','missing','-DX=1','-UX','-DX=2','-c',str(root/'unit.cpp')]}
+            original=list(entry['arguments'])
+            derived,includes=sonar.analyzer_entry(entry)
+            self.assertEqual(entry['arguments'],original)
+            self.assertNotIn('missing',derived['arguments'])
+            self.assertIn(str(root/'headers'),derived['arguments'])
+            self.assertEqual(includes,[str(root/'headers')])
+            self.assertEqual(derived['arguments'][-5:],['-DX=1','-UX','-DX=2','-c',str(root/'unit.cpp')])
+    def test_real_compiler_context_and_ordered_overrides(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            entries=[{'directory':directory,'file':str(root/name),
+                      'arguments':['g++','-m32','-std=c++17','-O3','-fPIC','-DVALUE=1','-UVALUE','-DVALUE=2',
+                                   '-I','missing','-c',str(root/name),'-o','unit.o']}
+                     for name in ['one.cpp','two.cpp']]
+            enriched,derived=sonar.compiler_identity(entries,dict(os.environ))
+            self.assertEqual(derived[0]['defines']['VALUE'],'2')
+            self.assertEqual(derived[0]['defines']['__SIZEOF_POINTER__'],'4')
+            self.assertNotIn(str(root/'missing'),derived[0]['includes'])
+            self.assertEqual(len(derived),3)
+            self.assertIn('-m32',enriched[0]['arguments'])
+    def test_compiler_probe_failure_rejected(self):
+        with patch.object(sonar.subprocess,'run',return_value=subprocess.CompletedProcess([],1,'','')):
+            with self.assertRaises(sonar.SonarError):sonar.probe_compiler({'directory':'/tmp'},['g++'],{})
+    def test_missing_implicit_includes_rejected(self):
+        with self.assertRaises(sonar.SonarError):sonar.implicit_includes('', '/tmp')
+    def test_missing_cpp_context_rejected(self):
+        with self.assertRaises(sonar.SonarError):sonar.global_cpp_context([],[])
+    def test_database_must_cover_all_product_units_in_x86(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'extension').mkdir();source=root/'extension/unit.cpp';source.write_text('int value;')
+            database=root/'commands.json'
+            entry={'directory':directory,'file':str(source),'arguments':['g++','-m32','-c',str(source)]}
+            database.write_text(json.dumps([entry]))
+            self.assertEqual(len(sonar.compilation_database(root,database)),1)
+            entry['arguments'].remove('-m32');database.write_text(json.dumps([entry]))
+            with self.assertRaises(sonar.SonarError):sonar.compilation_database(root,database)
+            database.write_text('[]')
+            with self.assertRaises(sonar.SonarError):sonar.compilation_database(root,database)
+    def test_valid_context_and_scanner_completion(self):
+        context=sonar.scanner_context({'SONAR_HOST_URL':'http://127.0.0.1:9000','SONAR_TOKEN':'example'})
+        self.assertEqual(context[3],'true')
+        sonar.validate_scanner(subprocess.CompletedProcess([],0,'QUALITY GATE STATUS: PASSED',''))
+        with self.assertRaises(sonar.SonarError):sonar.validate_scanner(subprocess.CompletedProcess([],1,'',''))
+    def test_no_cppcheck_parser_failure_can_reach_scanner(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            sonar.validate_cppcheck(subprocess.CompletedProcess([],0,'','<results><errors/></results>'),root,root,'')
+            with self.assertRaises(sonar.SonarError):sonar.validate_cppcheck(subprocess.CompletedProcess([],1,'','failure'),root,root,'')
+            with self.assertRaises(sonar.SonarError):sonar.validate_cppcheck(subprocess.CompletedProcess([],0,'','<results/>'),root,root,'')
     def test_remote_http_rejected(self):
         with self.assertRaises(sonar.SonarError):sonar.scanner_context({'SONAR_HOST_URL':'http://example.org','SONAR_TOKEN':'example'})
     def test_gate_cannot_be_disabled(self):

@@ -2,6 +2,14 @@
 
 ## Sin publicar
 
+- Se corrige el contexto de sonar-cxx para ignorar únicamente directorios de include
+  opcionales ausentes, conservando los flags del build y el parser estricto.
+- Los errores del scanner impiden aceptar un análisis aunque su proceso devuelva éxito.
+- Se reduce complejidad del tooling y se conserva la convención de llamada x86
+  con sintaxis GNU de atributos compatible con el parser.
+- Se incorpora cobertura real local con hashes de fuentes, informes y contadores;
+  el código de consola sin ejecutar se mantiene como no cubierto.
+
 - La configuración Sonar se carga desde `.env`, con plantilla pública `env.example`,
   sin depender de `sonar-project.properties`; conserva el parser estricto.
 

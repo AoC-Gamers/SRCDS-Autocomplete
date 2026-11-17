@@ -51,7 +51,11 @@
  */
 
 static int DoAutocompletion(CTextConsole *tc, const char *consoleText, int consoleTextLen);
+#ifdef _LINUX
+[[gnu::stdcall]] static void HandleReceiveTab(CTextConsole *tc);
+#else
 static void __stdcall HandleReceiveTab(CTextConsole *tc);
+#endif
 static bool ResolveDedicatedLibrary(char *error, size_t maxlength, void **dedicatedHandle);
 static void ReleaseDedicatedLibrary(void *dedicatedHandle);
 static bool EnableReceiveTabDetour(void *dedicatedHandle, IGameConfig *gameConfig, char *error, size_t maxlength);
@@ -738,7 +742,11 @@ static int DoAutocompletion(CTextConsole *tc, const char *consoleText, int conso
 	return matches.Count();
 }
 
+#ifdef _LINUX
+[[gnu::stdcall]] static void HandleReceiveTab(CTextConsole *tc)
+#else
 static void __stdcall HandleReceiveTab(CTextConsole *tc)
+#endif
 {
 	if (!NormalizeConsoleTextState(tc))
 	{

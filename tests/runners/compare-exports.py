@@ -8,6 +8,7 @@ import zipfile
 p = argparse.ArgumentParser()
 p.add_argument('--baseline-zip', required=True, type=Path)
 p.add_argument('--current', required=True, type=Path)
+p.add_argument('--same-text', action='store_true')
 a = p.parse_args()
 
 
@@ -28,3 +29,12 @@ with tempfile.TemporaryDirectory(prefix='autocomplete-exports-') as directory:
     if removed or added:
         raise SystemExit(f'Export changes: removed={sorted(removed)}, added={sorted(added)}')
     print(f'ELF target and {len(symbols(old))} exported symbol names/types unchanged')
+    if a.same_text:
+        sections=[]
+        for index, binary in enumerate((old, a.current)):
+            section=Path(directory)/f'text-{index}.bin'
+            subprocess.run(['objcopy','--only-section=.text','-O','binary',str(binary),str(section)],check=True)
+            sections.append(section.read_bytes())
+        if sections[0] != sections[1]:
+            raise SystemExit('ELF .text machine code changed')
+        print('ELF .text machine code byte-identical to baseline')

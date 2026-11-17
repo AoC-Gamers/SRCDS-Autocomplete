@@ -18,6 +18,25 @@ def safe_path(name):
     return name
 
 
+def manifest_paths(tree, prefix=''):
+    paths = set()
+    for key, value in tree.items():
+        if key == 'files':
+            paths.update(safe_path(prefix + name) for name in value)
+        elif isinstance(value, dict):
+            paths.update(manifest_paths(value, prefix + safe_path(key) + '/'))
+        else:
+            raise ValueError(f'Unsupported artifact map key: {key}')
+    return paths
+
+
+def validate_documentation_paths(paths):
+    for name in paths:
+        safe_path(name)
+        if name not in {'README.md', 'LICENSE', 'CHANGELOG.md'} and not (name.startswith('docs/') and name.endswith('.md')):
+            raise ValueError(f'Not stable product documentation: {name}')
+
+
 def expected(root, platform, documentation=True):
     if platform not in {'linux', 'windows'}:
         raise ValueError('Platform must be linux or windows')
@@ -26,16 +45,7 @@ def expected(root, platform, documentation=True):
         raise ValueError('Unsupported package map schema/components')
     suffix = 'so' if platform == 'linux' else 'dll'
     result = {f'addons/sourcemod/extensions/autocomplete.ext.2.l4d2.{suffix}'}
-    def walk(tree, prefix=''):
-        for key, value in tree.items():
-            if key == 'files':
-                for name in value:
-                    result.add(safe_path(prefix + name))
-            elif isinstance(value, dict):
-                walk(value, prefix + safe_path(key) + '/')
-            else:
-                raise ValueError(f'Unsupported artifact map key: {key}')
-    walk(data['artifact'])
+    result.update(manifest_paths(data['artifact']))
     allowed_runtime = {
         f'addons/sourcemod/extensions/autocomplete.ext.2.l4d2.{suffix}',
         'addons/sourcemod/extensions/autocomplete.autoload',
@@ -43,10 +53,7 @@ def expected(root, platform, documentation=True):
     }
     if result != allowed_runtime:
         raise ValueError('Map must select the complete owned runtime product only')
-    for name in data['documentation']:
-        safe_path(name)
-        if name not in {'README.md', 'LICENSE', 'CHANGELOG.md'} and not (name.startswith('docs/') and name.endswith('.md')):
-            raise ValueError(f'Not stable product documentation: {name}')
+    validate_documentation_paths(data['documentation'])
     if documentation:
         result.update(data['documentation'])
     if len({p.casefold() for p in result}) != len(result):

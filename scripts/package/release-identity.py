@@ -33,6 +33,14 @@ def resolve(name: str, platform: str, ref_type: str = "local", ref: str = "",
         raise ValueError("ref-type must be branch, tag or local")
     if local_channel not in {"local", "latest", "develop"}:
         raise ValueError("local-channel must be local, latest or develop")
+    channel, tag, title, prerelease, latest, publishable = ref_identity(name, ref_type, ref, sha, local_channel)
+    label = platform
+    basename = f"{name}-{channel}-{label}"
+    return Identity(name, platform, label, channel, basename, basename + ".zip",
+                    tag, title, prerelease, latest, publishable)
+
+
+def ref_identity(name, ref_type, ref, sha, local_channel):
     tag = title = None
     prerelease = latest = publishable = False
     if ref_type == "branch" and ref in {"main", "develop"}:
@@ -45,7 +53,7 @@ def resolve(name: str, platform: str, ref_type: str = "local", ref: str = "",
     elif ref_type == "tag":
         # The reference routes v* to versioned releases. Bound the value to a safe
         # basename without assuming all projects use an identical SemVer scheme.
-        if not re.fullmatch(r"v[0-9][0-9A-Za-z.+-]{0,79}", ref) or ".." in ref:
+        if not re.fullmatch(r"v\d[0-9A-Za-z.+-]{0,79}", ref, flags=re.ASCII) or ".." in ref:
             raise ValueError("tag must be a safe v-prefixed version, e.g. v1.2.3")
         channel = ref[1:]
         tag, title, latest, publishable = ref, f"{name} {channel}", True, True
@@ -55,10 +63,7 @@ def resolve(name: str, platform: str, ref_type: str = "local", ref: str = "",
         if not re.fullmatch(r"[0-9a-fA-F]{40}", sha):
             raise ValueError("non-channel branches require a full 40-character commit SHA")
         channel = sha[:7].lower()
-    label = platform
-    basename = f"{name}-{channel}-{label}"
-    return Identity(name, platform, label, channel, basename, basename + ".zip",
-                    tag, title, prerelease, latest, publishable)
+    return channel, tag, title, prerelease, latest, publishable
 
 
 def main() -> int:

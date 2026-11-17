@@ -19,3 +19,9 @@ comprueba los 256 bytes, escapes mixtos, malformados/truncados, capacidades y
 canarios. Forma parte de `test-ci`, que requiere GCC/G++ multilib y sanitizadores.
 `make test-exports ABI_BASELINE_ZIP=<zip-linux-anterior>` compara arquitectura ELF
 y nombres/tipos de símbolos exportados; no acredita toda la ABI ni carga SRCDS.
+
+La medición local usa `test-python-coverage` y `test-coverage` con `TEST_OUTPUT`
+nuevo. `coverage-tooling-test` rechaza fuentes/informes obsoletos y contadores
+no ejecutados con hits. Estas herramientas no forman parte de `test-ci` ni Actions.
+`test-exports TEST_EXPORT_OPTIONS=--same-text` exige además código máquina `.text`
+idéntico al ZIP de referencia, útil para cambios puramente sintácticos.
