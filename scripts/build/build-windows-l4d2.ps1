@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $PSScriptRoot
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 
 function Import-DotEnv {
   param([string]$Path)
@@ -37,7 +37,13 @@ $hl2sdkDir = if ($env:HL2SDK_DIR) { $env:HL2SDK_DIR } else { Join-Path $depsDir 
 $sourcemodDir = if ($env:SOURCEMOD_DIR) { $env:SOURCEMOD_DIR } else { Join-Path $depsDir "sourcemod-1.12" }
 $mmsourceDir = if ($env:MMSOURCE_DIR) { $env:MMSOURCE_DIR } else { Join-Path $depsDir "mmsource-1.12" }
 $venvDir = if ($env:VENV_DIR) { $env:VENV_DIR } else { Join-Path $depsDir ".venv-windows" }
+$env:HL2SDK_DIR = $hl2sdkDir
+$env:SOURCEMOD_DIR = $sourcemodDir
+$env:MMSOURCE_DIR = $mmsourceDir
+if (-not $env:AMBUILD_DIR) { $env:AMBUILD_DIR = Join-Path $depsDir "ambuild" }
 $configureScript = if ($env:CONFIGURE_SCRIPT) { $env:CONFIGURE_SCRIPT } else { Join-Path $root "configure.py" }
+
+Remove-Item -Force (Join-Path $buildDir "build-receipt.json") -ErrorAction SilentlyContinue
 
 $venvPython = Join-Path $venvDir "Scripts\python.exe"
 $venvAmbuild = Join-Path $venvDir "Scripts\ambuild.exe"
@@ -99,11 +105,11 @@ foreach ($requiredDir in @($hl2sdkDir, $sourcemodDir, $mmsourceDir)) {
 }
 
 if (-not (Test-Path $venvPython)) {
-  throw "Missing Python venv at $venvDir. Run scripts/fetch-windows-deps.ps1 first."
+  throw "Missing Python venv at $venvDir. Run make deps-exts-windows first."
 }
 
 if (-not (Test-Path $venvAmbuild)) {
-  throw "Missing AMBuild in $venvDir. Run scripts/fetch-windows-deps.ps1 first."
+  throw "Missing AMBuild in $venvDir. Run make deps-exts-windows first."
 }
 
 $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
@@ -132,6 +138,8 @@ try {
     --sm-path $sourcemodDir `
     --enable-optimize
 
+  if ($LASTEXITCODE -ne 0) { throw "AMBuild configure failed." }
+
   if (-not (Test-Path ".\.ambuild2\vars")) {
     throw "AMBuild configure did not produce .ambuild2\vars."
   }
@@ -159,3 +167,8 @@ Write-Host "BUILD_DIR=$buildDir"
 Write-Host "EXTENSION=$extBin"
 Write-Host "AUTOLOAD=$autoloadFile"
 Write-Host "GAMEDATA=$gamedataFile"
+
+& $venvPython (Join-Path $root "scripts/build/export-compile-commands.py") $buildDir
+if ($LASTEXITCODE -ne 0) { throw "Compilation database export failed." }
+& $venvPython (Join-Path $root "scripts/package/build-receipt.py") $root $buildDir windows
+if ($LASTEXITCODE -ne 0) { throw "Build receipt failed." }

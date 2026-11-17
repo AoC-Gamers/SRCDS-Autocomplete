@@ -21,5 +21,17 @@
         }
       }
     }
-  }
+  },
+  "documentation": [
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "docs/README.md",
+    "docs/build/README.md",
+    "docs/build/dependencies.md",
+    "docs/build/ci.md",
+    "docs/build/sonar.md",
+    "docs/console/README.md",
+    "docs/console/terminal.md"
+  ]
 }

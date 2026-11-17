@@ -45,3 +45,12 @@ Dockerfile text eol=lf
 *.vmt text eol=lf
 *.res text eol=lf
 *.kv text eol=lf
+
+# Identical source/receipt bytes across Windows build and Linux packaging jobs.
+*.cpp text eol=lf
+*.h text eol=lf
+*.autoload text eol=lf
+AMBuilder text eol=lf
+AMBuildScript text eol=lf
+PackageScript text eol=lf
+.gitattributes text eol=lf

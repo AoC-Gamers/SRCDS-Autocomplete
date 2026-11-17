@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $PSScriptRoot
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 
 function Import-DotEnv {
   param([string]$Path)
@@ -49,12 +49,16 @@ function Clone-OrUpdate {
 
   if (Test-Path (Join-Path $RepoDir ".git")) {
     git -C $RepoDir fetch --all --tags --prune
+    if ($LASTEXITCODE -ne 0) { throw "Dependency Git command failed." }
     git -C $RepoDir checkout $Branch
+    if ($LASTEXITCODE -ne 0) { throw "Dependency Git command failed." }
     git -C $RepoDir pull --ff-only
+    if ($LASTEXITCODE -ne 0) { throw "Dependency Git command failed." }
     return
   }
 
   git clone --branch $Branch --single-branch $RepoUrl $RepoDir
+  if ($LASTEXITCODE -ne 0) { throw "Dependency Git command failed." }
 }
 
 function Sync-SubmodulesIfPresent {
@@ -65,7 +69,9 @@ function Sync-SubmodulesIfPresent {
   }
 
   git -C $RepoDir submodule sync --recursive
+  if ($LASTEXITCODE -ne 0) { throw "Dependency Git command failed." }
   git -C $RepoDir submodule update --init --recursive
+  if ($LASTEXITCODE -ne 0) { throw "Dependency Git command failed." }
 }
 
 New-Item -ItemType Directory -Force $depsDir | Out-Null
@@ -97,7 +103,9 @@ if (-not (Test-Path $venvPython)) {
 }
 
 & $venvPython -m pip install --upgrade pip
+if ($LASTEXITCODE -ne 0) { throw "Dependency pip command failed." }
 & $venvPython -m pip install $ambuildDir
+if ($LASTEXITCODE -ne 0) { throw "Dependency pip command failed." }
 
 Write-Host "Dependencies ready."
 Write-Host "ROOT_DIR=$root"

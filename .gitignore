@@ -36,7 +36,7 @@
 Debug/
 *.vcxproj.user
 
-build/
+/build/
 .build/
 .deps/
 dist/
@@ -48,3 +48,5 @@ __pycache__/
 tmp/
 temp/
 .tmp/
+env.secret
+.scannerwork/

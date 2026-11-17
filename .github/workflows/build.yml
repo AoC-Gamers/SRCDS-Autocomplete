@@ -12,13 +12,15 @@ on:
       - .github/workflows/build.yml
       - scripts/**
       - Makefile
-      - plugin-package-map.json
+      - .gitattributes
+      - scripts/package/package-map.json
       - configure.py
       - AMBuildScript
       - AMBuilder
       - PackageScript
       - extension/**
-      - gamedata/**
+      - addons/**
+      - tests/**
       - README.md
       - LICENSE
       - docs/**
@@ -26,10 +28,10 @@ on:
 
 concurrency:
   group: srcds-autocomplete-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   deps-exts-linux:
@@ -52,7 +54,7 @@ jobs:
         id: cache-key
         shell: bash
         run: |
-          echo "key=exts-linux-deps-${{ runner.os }}-${{ hashFiles('scripts/fetch-linux-deps.sh', 'scripts/build-linux-l4d2.sh', 'scripts/stage-artifact.py', 'scripts/package-release.py', 'plugin-package-map.json', 'Makefile', 'configure.py', 'AMBuildScript', 'PackageScript') }}" >> "$GITHUB_OUTPUT"
+          echo "key=exts-linux-deps-${{ runner.os }}-${{ hashFiles('scripts/deps/fetch-linux-deps.sh', 'scripts/build/build-linux-l4d2.sh', 'scripts/package/stage-artifact.py', 'scripts/package/package-release.py', 'scripts/package/package-map.json', 'Makefile', 'configure.py', 'AMBuildScript', 'PackageScript') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore dependency cache
         id: deps-cache-restore
@@ -109,32 +111,25 @@ jobs:
       - name: Resolve Linux artifact metadata
         id: artifact
         shell: bash
+        env:
+          AOC_REF_TYPE: ${{ github.ref_type }}
+          AOC_REF_NAME: ${{ github.ref_name }}
+          AOC_COMMIT_SHA: ${{ github.sha }}
         run: |
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            version="${GITHUB_REF_NAME#v}"
-            echo "basename=srcds-autocomplete-$version-linux" >> "$GITHUB_OUTPUT"
-            echo "release_tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-            echo "release_name=srcds-autocomplete $version" >> "$GITHUB_OUTPUT"
-            echo "prerelease=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          case "${GITHUB_REF_NAME}" in
-            main)
-              echo "basename=srcds-autocomplete-latest-linux" >> "$GITHUB_OUTPUT"
-              echo "release_tag=channel/latest" >> "$GITHUB_OUTPUT"
-              echo "release_name=Latest" >> "$GITHUB_OUTPUT"
-              echo "prerelease=false" >> "$GITHUB_OUTPUT"
-              ;;
-            develop)
-              echo "basename=srcds-autocomplete-develop-linux" >> "$GITHUB_OUTPUT"
-              echo "release_tag=channel/develop" >> "$GITHUB_OUTPUT"
-              echo "release_name=Develop" >> "$GITHUB_OUTPUT"
-              echo "prerelease=true" >> "$GITHUB_OUTPUT"
-              ;;
-            *)
-              echo "basename=srcds-autocomplete-${GITHUB_SHA::7}-linux" >> "$GITHUB_OUTPUT"
-              ;;
-          esac
+          make --no-print-directory release-identity-linux > identity.json
+          python - <<'PYCODE'
+          import json, os
+          data = json.load(open("identity.json"))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              value = data["basename"]
+              print("basename=" + (str(value).lower() if isinstance(value, bool) else str(value or "")), file=out)
+              value = data["release_tag"]
+              print("release_tag=" + (str(value).lower() if isinstance(value, bool) else str(value or "")), file=out)
+              value = data["release_name"]
+              print("release_name=" + (str(value).lower() if isinstance(value, bool) else str(value or "")), file=out)
+              value = data["prerelease"]
+              print("prerelease=" + (str(value).lower() if isinstance(value, bool) else str(value or "")), file=out)
+          PYCODE
 
       - name: Upload Linux build tree
         uses: actions/upload-artifact@v7
@@ -171,10 +166,7 @@ jobs:
         run: make release-linux RELEASE_BASENAME="${{ needs.build-exts-linux.outputs.basename }}"
 
       - name: Validate Linux artifact
-        env:
-          EXTS_ARTIFACT_DIR: ${{ github.workspace }}/dist/linux/artifact
-          EXTS_PLATFORM: linux
-        run: bash ./scripts/ci-validate-artifact.sh
+        run: make validate-artifact-linux RELEASE_BASENAME="${{ needs.build-exts-linux.outputs.basename }}"
 
       - name: Upload Linux release zip
         uses: actions/upload-artifact@v7
@@ -202,7 +194,7 @@ jobs:
         id: cache-key
         shell: bash
         run: |
-          echo "key=exts-windows-deps-${{ runner.os }}-${{ hashFiles('scripts/fetch-windows-deps.ps1', 'scripts/build-windows-l4d2.ps1', 'scripts/stage-artifact.py', 'scripts/package-release.py', 'plugin-package-map.json', 'Makefile', 'configure.py', 'AMBuildScript', 'PackageScript') }}" >> "$GITHUB_OUTPUT"
+          echo "key=exts-windows-deps-${{ runner.os }}-${{ hashFiles('scripts/deps/fetch-windows-deps.ps1', 'scripts/build/build-windows-l4d2.ps1', 'scripts/package/stage-artifact.py', 'scripts/package/package-release.py', 'scripts/package/package-map.json', 'Makefile', 'configure.py', 'AMBuildScript', 'PackageScript') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore dependency cache
         id: deps-cache-restore
@@ -252,23 +244,19 @@ jobs:
       - name: Resolve Windows artifact metadata
         id: artifact
         shell: bash
+        env:
+          AOC_REF_TYPE: ${{ github.ref_type }}
+          AOC_REF_NAME: ${{ github.ref_name }}
+          AOC_COMMIT_SHA: ${{ github.sha }}
         run: |
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            version="${GITHUB_REF_NAME#v}"
-            echo "basename=srcds-autocomplete-$version-windows" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          case "${GITHUB_REF_NAME}" in
-            main)
-              echo "basename=srcds-autocomplete-latest-windows" >> "$GITHUB_OUTPUT"
-              ;;
-            develop)
-              echo "basename=srcds-autocomplete-develop-windows" >> "$GITHUB_OUTPUT"
-              ;;
-            *)
-              echo "basename=srcds-autocomplete-${GITHUB_SHA::7}-windows" >> "$GITHUB_OUTPUT"
-              ;;
-          esac
+          make --no-print-directory release-identity-windows > identity.json
+          python - <<'PYCODE'
+          import json, os
+          data = json.load(open("identity.json"))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              value = data["basename"]
+              print("basename=" + (str(value).lower() if isinstance(value, bool) else str(value or "")), file=out)
+          PYCODE
 
       - name: Upload Windows build tree
         uses: actions/upload-artifact@v7
@@ -306,11 +294,7 @@ jobs:
         run: make release-windows RELEASE_BASENAME="${{ needs.build-exts-windows.outputs.basename }}"
 
       - name: Validate Windows artifact
-        shell: bash
-        env:
-          EXTS_ARTIFACT_DIR: ${{ github.workspace }}/dist/windows/artifact
-          EXTS_PLATFORM: windows
-        run: bash ./scripts/ci-validate-artifact.sh
+        run: make validate-artifact-windows RELEASE_BASENAME="${{ needs.build-exts-windows.outputs.basename }}"
 
       - name: Upload Windows release zip
         uses: actions/upload-artifact@v7
@@ -320,10 +304,18 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  publish:
+  test:
     runs-on: ubuntu-22.04
-    needs: [build-exts-linux, build-exts-windows, release-linux, release-windows]
-    if: github.ref_type == 'branch' || (github.ref_type == 'tag' && startsWith(github.ref_name, 'v'))
+    steps:
+      - uses: actions/checkout@v6
+      - run: make test-ci TEST_OUTPUT=.build/test-ci
+
+  publish:
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    needs: [test, build-exts-linux, build-exts-windows, release-linux, release-windows]
+    if: github.event_name != 'pull_request' && ((github.ref_type == 'branch' && (github.ref_name == 'main' || github.ref_name == 'develop')) || (github.ref_type == 'tag' && startsWith(github.ref_name, 'v')))
 
     steps:
       - name: Checkout repository
@@ -347,6 +339,8 @@ jobs:
         if: github.ref_type == 'branch' && (github.ref_name == 'main' || github.ref_name == 'develop')
         shell: bash
         run: |
+          test -f 'dist/release/${{ needs.build-exts-linux.outputs.basename }}.zip'
+          test -f 'dist/release/${{ needs.build-exts-windows.outputs.basename }}.zip'
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -f "${{ needs.build-exts-linux.outputs.release-tag }}" "$GITHUB_SHA"
@@ -362,20 +356,26 @@ jobs:
           title="${{ needs.build-exts-linux.outputs.release-name }}"
           linux_asset="dist/release/${{ needs.build-exts-linux.outputs.basename }}.zip"
           windows_asset="dist/release/${{ needs.build-exts-windows.outputs.basename }}.zip"
+          test -f "$linux_asset"
+          test -f "$windows_asset"
+          gh release list --limit 100 --json tagName > releases.json
+          date_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          cat > channel-notes.md <<EOF
+          Actualización del canal $title.
+          Fecha de actualización (UTC): $date_utc
+          Commit: $GITHUB_SHA
+          Ejecución de CI: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID (intento $GITHUB_RUN_ATTEMPT)
+          EOF
           if gh release view "$tag" >/dev/null 2>&1; then
-            if [[ "${{ needs.build-exts-linux.outputs.prerelease }}" == "true" ]]; then
-              gh release edit "$tag" --title "$title" --prerelease --latest=false
-            else
-              gh release edit "$tag" --title "$title" --latest
-            fi
-          else
-            if [[ "${{ needs.build-exts-linux.outputs.prerelease }}" == "true" ]]; then
-              gh release create "$tag" --title "$title" --prerelease --latest=false --target "$GITHUB_SHA"
-            else
-              gh release create "$tag" --title "$title" --latest --target "$GITHUB_SHA"
-            fi
+            gh release delete "$tag" --yes
           fi
-          gh release upload "$tag" "$linux_asset" "$windows_asset" --clobber
+          gh release create "$tag" --draft --title "$title" --notes-file channel-notes.md --target "$GITHUB_SHA"
+          gh release upload "$tag" "$linux_asset" "$windows_asset"
+          if [[ "${{ needs.build-exts-linux.outputs.prerelease }}" == "true" ]]; then
+            gh release edit "$tag" --draft=false --prerelease --latest=false
+          else
+            gh release edit "$tag" --draft=false --prerelease=false --latest
+          fi
 
       - name: Publish tagged release
         if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
