@@ -27,7 +27,7 @@ class CanonicalCLI(unittest.TestCase):
         self.cli('package/package-release.py','--root',self.root,'--artifact-dir',stage,
                  '--basename','srcds-autocomplete-local-linux','--platform','linux')
         archive=self.root/'dist/release/srcds-autocomplete-local-linux.zip'
-        self.cli('ci/validate-artifact.py','--artifact-dir',stage,'--platform','linux','--zip',archive)
+        self.cli('ci/validate-artifact.py','--root',self.root,'--artifact-dir',stage,'--platform','linux','--zip',archive)
         self.cli('package/stage-artifact.py',self.root,self.raw,self.raw,'--platform','linux',success=False)
         self.cli('package/package-release.py','--root',self.root,'--artifact-dir',stage,
                  '--basename','../escape','--platform','linux',success=False)
@@ -73,12 +73,12 @@ class CanonicalCLI(unittest.TestCase):
     def test_documentation_symlinks_and_special_sources_rejected(self):
         stage=self.root/'.build/guarded-stage'
         self.cli('package/stage-artifact.py',self.root,self.raw,stage,'--platform','linux')
-        original=(stage/'docs/build/README.md').read_bytes()
-        document=self.root/'docs/build/README.md'
+        original=(stage/'README.md').read_bytes()
+        document=self.root/contract.INSTALL_GUIDE
         external=Path(self.temp.name)/'external.md';external.write_text('synthetic external document')
         document.unlink();document.symlink_to(external)
         self.cli('package/stage-artifact.py',self.root,self.raw,stage,'--platform','linux',success=False)
-        self.assertEqual((stage/'docs/build/README.md').read_bytes(),original)
+        self.assertEqual((stage/'README.md').read_bytes(),original)
         document.unlink();document.symlink_to(self.root/'README.md')
         self.cli('package/stage-artifact.py',self.root,self.raw,stage,'--platform','linux',success=False)
         document.unlink();os.mkfifo(document)
@@ -86,7 +86,7 @@ class CanonicalCLI(unittest.TestCase):
 
     def test_linked_documentation_directory_rejected(self):
         import shutil
-        directory=self.root/'docs/build'
+        directory=self.root/'docs/console'
         external=Path(self.temp.name)/'external-docs'
         shutil.copytree(directory,external);shutil.rmtree(directory);directory.symlink_to(external,target_is_directory=True)
         self.cli('package/stage-artifact.py',self.root,self.raw,self.root/'.build/stage','--platform','linux',success=False)

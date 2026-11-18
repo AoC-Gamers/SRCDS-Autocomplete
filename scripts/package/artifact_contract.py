@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path, PurePosixPath
 import stat
 import struct
+import subprocess
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -45,11 +46,39 @@ def manifest_paths(tree, prefix=''):
     return paths
 
 
-def validate_documentation_paths(paths):
-    for name in paths:
-        safe_path(name)
-        if name not in {'README.md', 'LICENSE', 'CHANGELOG.md'} and not (name.startswith('docs/') and name.endswith('.md')):
-            raise ValueError(f'Not stable product documentation: {name}')
+INSTALL_GUIDE = 'docs/console/install.md'
+REQUIRED_DOCUMENTS = {'README.md', 'LICENSE', 'CHANGELOG.md'}
+REPOSITORY = 'https://github.com/AoC-Gamers/srcds-autocomplete'
+
+
+def revision(root):
+    if not (root / '.git').exists():
+        return None
+    sha = subprocess.check_output(['git', '-C', str(root), 'rev-parse', '--verify', 'HEAD'],
+                                  text=True).strip()
+    if len(sha) != 40 or any(character not in '0123456789abcdef' for character in sha):
+        raise ValueError('Invalid source revision')
+    return sha
+
+
+def document_bytes(root, name, platform):
+    if name == 'README.md':
+        guide = source_file(root, INSTALL_GUIDE).read_text(encoding='utf-8')
+        sha = revision(root)
+        details = f'\nPlataforma del ZIP: **{platform} x86**.\n'
+        if sha:
+            details += f'\nRevisión base: `{sha}`.\n'
+            details += f'\n[Documentación y código de la revisión]({REPOSITORY}/tree/{sha}).\n'
+        else:
+            details += '\nPaquete local desde un árbol sin metadatos Git.\n'
+        return (guide + details).encode('utf-8')
+    data = source_file(root, name).read_bytes()
+    if name == 'LICENSE':
+        if not all(marker in data for marker in (
+                b'GNU GENERAL PUBLIC LICENSE', b'Version 3, 29 June 2007',
+                b'END OF TERMS AND CONDITIONS')):
+            raise ValueError('Missing or invalid GPLv3 text: LICENSE')
+    return data
 
 
 def expected(root, platform, documentation=True):
@@ -68,9 +97,11 @@ def expected(root, platform, documentation=True):
     }
     if result != allowed_runtime:
         raise ValueError('Map must select the complete owned runtime product only')
-    validate_documentation_paths(data['documentation'])
+    documents = data['documentation']
+    if set(documents) != REQUIRED_DOCUMENTS or len(documents) != len(REQUIRED_DOCUMENTS):
+        raise ValueError('Map must select the installation guide, changelog and required LICENSE')
     if documentation:
-        result.update(data['documentation'])
+        result.update(documents)
     if len({p.casefold() for p in result}) != len(result):
         raise ValueError('Case collision in package map')
     return result
@@ -117,7 +148,7 @@ def validate_files(files, root, platform, documentation=True):
         if name.endswith(('.so', '.dll')):
             check_binary(data, platform)
         elif not name.startswith('addons/'):
-            if data != source_file(root, name).read_bytes():
+            if data != document_bytes(root, name, platform):
                 raise ValueError(f'Stale documentation: {name}')
         elif data != source_file(root, 'extension/autocomplete.autoload' if name.endswith('.autoload') else name).read_bytes():
             raise ValueError(f'Stale runtime resource: {name}')
@@ -171,7 +202,7 @@ def atomic_json(path, value):
 
 def write_receipt(tree, root, platform):
     binaries = {n: hashlib.sha256(d).hexdigest() for n,d in inventory(tree).items() if n.endswith(('.so', '.dll'))}
-    receipt = {'sources': source_digest(root), 'platform': platform, 'binaries': binaries}
+    receipt = {'sources': source_digest(root), 'platform': platform, 'binaries': binaries, 'revision': revision(root)}
     database = tree.parent/'compile_commands.json'
     if tree.name == 'package' and database.is_file():
         receipt['compilation_database'] = hashlib.sha256(database.read_bytes()).hexdigest()
@@ -181,7 +212,7 @@ def write_receipt(tree, root, platform):
 def verify_receipt(tree, root, platform):
     receipt = json.loads(receipt_path(tree).read_text())
     binaries = {n: hashlib.sha256(d).hexdigest() for n,d in inventory(tree).items() if n.endswith(('.so', '.dll'))}
-    wanted = {'sources': source_digest(root), 'platform': platform, 'binaries': binaries}
+    wanted = {'sources': source_digest(root), 'platform': platform, 'binaries': binaries, 'revision': revision(root)}
     database = tree.parent/'compile_commands.json'
     if tree.name == 'package' and database.is_file():
         wanted['compilation_database'] = hashlib.sha256(database.read_bytes()).hexdigest()

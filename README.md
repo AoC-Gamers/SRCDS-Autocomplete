@@ -14,20 +14,8 @@ Este repositorio se mantiene de forma intencional como una versión **solo para 
 
 ## Instalación
 
-Requiere L4D2 dedicado x86, SourceMod 1.12 y MetaMod:Source 1.12.
-Copia `addons/` del ZIP de tu plataforma a la raíz del juego:
-
-- `addons/sourcemod/extensions/autocomplete.ext.2.l4d2.so` (Linux) o `.dll` (Windows).
-- `addons/sourcemod/extensions/autocomplete.autoload`.
-- `addons/sourcemod/gamedata/autocomplete.games.txt`.
-
-Conserva la documentación fuera del servidor para evitar colisiones con otros
-paquetes. Al migrar nombres antiguos `autocomplete.ext.so` / `.dll`, descarga de
-memoria la copia antigua y retírala antes de instalar la canónica; deja una sola
-copia de la extensión.
-
-El [contrato de consola](docs/console/README.md) describe cvars, providers y ejemplos.
-Consulta también los [límites del terminal](docs/console/terminal.md).
+Consulta la [guía de instalación](docs/console/install.md) para elegir el ZIP,
+comprobar la carga y volver a la versión anterior.
 
 ## Estructura del Repositorio
 

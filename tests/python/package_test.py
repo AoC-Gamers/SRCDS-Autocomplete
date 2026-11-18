@@ -61,7 +61,43 @@ class Packages(unittest.TestCase):
         z=self.root/'dist/release/srcds-autocomplete-develop-linux.zip'
         files=contract.validate_zip(z,self.root,'linux')
         self.assertEqual(set(files), contract.expected(self.root,'linux'))
-        self.assertNotIn('scripts/package/package-map.json', files)
+        self.assertEqual({name for name in files if not name.startswith('addons/')},
+                         {'README.md', 'LICENSE', 'CHANGELOG.md'})
+        self.assertIn(b'linux x86', files['README.md'])
+
+    def test_install_guide_links_to_the_exact_checkout(self):
+        git = ['git', '-C', str(self.root)]
+        subprocess.run(git + ['init', '-q'], check=True)
+        subprocess.run(git + ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+                              'commit', '--allow-empty', '-qm', 'Fixture revision'], check=True)
+        sha = subprocess.check_output(git + ['rev-parse', 'HEAD'], text=True).strip()
+        contract.write_receipt(self.raw, self.root, 'linux')
+        self.make('package-exts-linux')
+        self.make('release-linux')
+        archive = self.root/'dist/release/srcds-autocomplete-local-linux.zip'
+        with zipfile.ZipFile(archive) as zipped:
+            self.assertIn(f'/tree/{sha}'.encode(), zipped.read('README.md'))
+
+    def test_required_license_cannot_be_omitted(self):
+        path = self.root / contract.MAP
+        data = json.loads(path.read_text())
+        data['documentation'].remove('LICENSE')
+        path.write_text(json.dumps(data))
+        contract.write_receipt(self.raw, self.root, 'linux')
+        result = self.make('package-exts-linux', success=False)
+        self.assertIn('required LICENSE', result.stderr)
+
+    def test_missing_empty_or_placeholder_license_blocks_packaging(self):
+        path = self.root / 'LICENSE'
+        original = path.read_bytes()
+        for data in (None, b' ', b'TODO: add license'):
+            with self.subTest(data=data):
+                if data is None:
+                    path.unlink()
+                else:
+                    path.write_bytes(data)
+                self.make('package-exts-linux', success=False)
+                path.write_bytes(original)
 
     def test_windows_make_packaging_with_synthetic_pe(self):
         raw=self.root/'.build/windows-l4d2/package'

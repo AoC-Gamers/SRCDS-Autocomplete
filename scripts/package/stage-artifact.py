@@ -6,7 +6,7 @@ import tempfile
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from output_paths import managed_output
-from artifact_contract import expected, source_file, validate_tree, verify_receipt, write_receipt
+from artifact_contract import document_bytes, expected, source_file, validate_tree, verify_receipt, write_receipt
 
 
 def main():
@@ -26,10 +26,12 @@ def main():
     temporary = Path(tempfile.mkdtemp(prefix=target.name+'-', dir=target.parent))
     try:
         for name in expected(root, args.platform):
-            src = source_file(source, name) if name.startswith('addons/') else source_file(root, name)
             dst = temporary/name
             dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst, follow_symlinks=False)
+            if name.startswith('addons/'):
+                shutil.copy2(source_file(source, name), dst, follow_symlinks=False)
+            else:
+                dst.write_bytes(document_bytes(root, name, args.platform))
         validate_tree(temporary, root, args.platform)
         if target.exists():
             shutil.rmtree(target)

@@ -1,53 +1,31 @@
-# Historial de cambios
+# Changelog
 
-## Sin publicar
+## [Unreleased]
 
-- Build y staging validan destinos gestionados antes de borrar directorios o
-  invalidar recibos, rechazando fuentes, enlaces y solapamientos con dependencias.
-- Los recibos de éxito se escriben atómicamente después de validar el producto y
-  completar el inventario; un inventario fallido ya no permite empaquetar.
+### Cambiado
 
-- Se unifican los nombres `.env.example`, `.env.secret` y `.env.secret.example`;
-  el secreto local permanece ignorado por Git.
+- **Distribución:** el ZIP incluye una guía de instalación y reversión que
+  identifica la plataforma y enlaza al commit base. Los manuales técnicos se
+  consultan en el repositorio y los avisos se reúnen en `LICENSE`.
 
-- Se rechazan enlaces y archivos especiales en fuentes de documentación del paquete,
-  incluidos enlaces en directorios padres, conservando el staging válido si falla.
-- Las pruebas de orquestación Sonar quedan exclusivamente en la suite local.
-- La selección explícita de HL2SDK se usa tanto para compilar como para inventariar,
-  con resolución de rutas antes de cambiar el directorio de trabajo.
-- Se cierra cada referencia de gamedata también al fallar su lectura o la apertura
-  de la biblioteca dedicada, con regresiones de balance de cargas/cierres.
+### Corregido
 
-- Se amplían las pruebas reales de consola y automatización, sin modificar el
-  código del producto ni excluir líneas de la medición.
-- El harness x86 ejecuta la implementación canónica con proveedores controlados,
-  shim de consola real y archivos reales, también bajo ASan/UBSan.
-- Los recibos de cobertura validan contadores en subdirectorios y rechazan
-  alteraciones o rutas que escapen de la ejecución medida.
+- **Consola:** al decodificar firmas, los escapes hexadecimales incompletos o
+  inválidos se conservan como texto literal. Los escapes válidos, incluido
+  `\x00`, siguen decodificándose.
+- **Consola:** se descartan sugerencias más cortas que el texto que deben
+  completar antes de calcular el sufijo.
+- **Carga:** se libera la referencia a gamedata si falla su lectura o no se
+  puede abrir la biblioteca del servidor dedicado.
 
-- Se corrige el contexto de sonar-cxx para ignorar únicamente directorios de include
-  opcionales ausentes, conservando los flags del build y el parser estricto.
-- Los errores del scanner impiden aceptar un análisis aunque su proceso devuelva éxito.
-- Se reduce complejidad del tooling y se conserva la convención de llamada x86
-  con sintaxis GNU de atributos compatible con el parser.
-- Se incorpora cobertura real local con hashes de fuentes, informes y contadores;
-  el código de consola sin ejecutar se mantiene como no cubierto.
+### Desarrollo
 
-- La configuración Sonar se carga desde `.env`, con plantilla pública `.env.example`,
-  sin depender de `sonar-project.properties`; conserva el parser estricto.
-
-- Se corrige la decodificación hexadecimal de firmas: las secuencias malformadas
-  se conservan literales y no leen valores sin inicializar. Se mantienen bytes
-  NUL, límites del buffer y escapes válidos.
-- Se valida la longitud de una sugerencia antes de calcular el texto restante.
-- Se explicitan overrides, const y conversiones C++ sin cambiar la ABI de consola.
-
-- Se organizan scripts por dependencias, compilación, paquetes, CI y herramientas.
-- Se centraliza el mapa en `scripts/package/package-map.json` y se traslada el
-  gamedata a su ruta SourceMod, sin cambiar su contenido ni destino de instalación.
-- Make comparte las fases de local y CI, incluida la validación del árbol y ZIP.
-- Los paquetes comprueban contenido, arquitectura y procedencia del build actual;
-  rechazan recursos ausentes, archivos ajenos, enlaces y resultados desactualizados.
-- Se conserva el nombre nativo con sufijo `2.l4d2` y se corrige la instalación documentada.
-- Se incorporan pruebas de paquetes y análisis Sonar explícito local separado de CI.
-- Se organiza documentación por funcionalidad y se inventarían dependencias móviles.
+- **Compilación:** Make unifica la compilación, las pruebas y el empaquetado en
+  local y en CI. El empaquetador comprueba que el binario tenga la arquitectura
+  esperada, corresponda a las fuentes usadas y lleve los recursos y la licencia.
+- **Rutas de salida:** **INCOMPATIBLE** si se configuraron destinos de compilación
+  o staging fuera del repositorio. Mueve esas salidas a un subdirectorio de
+  `.build/` o `dist/`. Los SDK aún pueden residir fuera del repositorio.
+- **Sonar:** el análisis local se configura con `.env` y `.env.secret` en lugar
+  de `sonar-project.properties`. Usa las plantillas versionadas
+  `.env.example` y `.env.secret.example` para preparar ambos archivos.

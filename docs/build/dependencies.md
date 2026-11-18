@@ -21,8 +21,8 @@ pública que distribuir. La versión del producto permanece en
 Los fetch conservan las ramas existentes y actualizan solo al invocar explícitamente
 `make deps-exts-linux` / `make deps-exts-windows`. No constituyen un lock reproducible:
 la selección de ramas, pip y las descargas oficiales siguen móviles. No se cambiaron
-versiones de SDK por esta reorganización. Los avisos/licencias de terceros se
-conservan en sus repositorios; el proyecto mantiene su [LICENSE](../../LICENSE).
+versiones de SDK por esta reorganización. Los avisos y licencias revisados se describen en
+[licencias y procedencia](licensing.md).
 
 Para validar con SDKs ya disponibles, seleccionar `LINUX_DEPS_DIR` o
 `WINDOWS_DEPS_DIR`. El build escribe `dependency-revisions.json` con SHA, submódulos

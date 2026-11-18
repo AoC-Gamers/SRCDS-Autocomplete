@@ -32,8 +32,10 @@ cwd; los defaults se resuelven desde el Makefile incluso con `make -f` externo.
 
 El [mapa](../../scripts/package/package-map.json) es la única selección de producto.
 La extensión mantiene `autocomplete.ext.2.l4d2.so` / `.dll`. El ZIP incluye solo
-la extensión propia, autoload, gamedata y documentación estable declarada. No
-contiene SDK, compiladores, tests, informes, mapa ni archivos privados.
+la extensión propia, autoload, gamedata, el README de instalación, el changelog
+y el archivo `LICENSE`. La guía se genera para la plataforma y enlaza al SHA base
+si el checkout tiene metadatos Git. Un árbol local sin Git se identifica como tal.
+Consulta [licencias y procedencia](licensing.md) antes de distribuir un binario.
 
 El adaptador del backend AMBuild 2.1 exporta `compile_commands.json` desde su
 grafo de compilación exitoso, sin reconstruir ni modificar las órdenes. El build emite un recibo de fuentes/binario y un
