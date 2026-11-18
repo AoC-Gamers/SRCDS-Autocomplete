@@ -34,8 +34,39 @@ permissions:
   contents: read
 
 jobs:
-  deps-exts-linux:
+  native-runners:
     runs-on: ubuntu-22.04
+    outputs:
+      linux: ${{ steps.runners.outputs.linux }}
+      windows: ${{ steps.runners.outputs.windows }}
+
+    steps:
+      - name: Validate L4D2 runner labels
+        id: runners
+        shell: bash
+        env:
+          L4D2_EXT_LINUX_RUNNER: ${{ vars.L4D2_EXT_LINUX_RUNNER }}
+          L4D2_EXT_WINDOWS_RUNNER: ${{ vars.L4D2_EXT_WINDOWS_RUNNER }}
+        run: |
+          missing=0
+          for platform in linux windows; do
+            variable="L4D2_EXT_${platform^^}_RUNNER"
+            label="${!variable-}"
+            if [[ -z "${label//[[:space:]]/}" ]]; then
+              echo "::error::$variable is missing or blank. Enable this AoC-Gamers organization variable for this repository."
+              missing=1
+            elif [[ "$label" == *$'\n'* || "$label" == *$'\r'* ]]; then
+              echo "::error::$variable must contain a single runner label on one line."
+              missing=1
+            else
+              printf '%s=%s\n' "$platform" "$label" >> "$GITHUB_OUTPUT"
+            fi
+          done
+          exit "$missing"
+
+  deps-exts-linux:
+    runs-on: ${{ needs.native-runners.outputs.linux }}
+    needs: native-runners
     outputs:
       cache-key: ${{ steps.cache-key.outputs.key }}
 
@@ -53,8 +84,10 @@ jobs:
       - name: Resolve dependency cache key
         id: cache-key
         shell: bash
+        env:
+          NATIVE_RUNNER_LABEL: ${{ needs.native-runners.outputs.linux }}
         run: |
-          echo "key=exts-linux-deps-${{ runner.os }}-${{ hashFiles('scripts/deps/fetch-linux-deps.sh', 'scripts/build/build-linux-l4d2.sh', 'scripts/package/stage-artifact.py', 'scripts/package/package-release.py', 'scripts/package/package-map.json', 'Makefile', 'configure.py', 'AMBuildScript', 'PackageScript') }}" >> "$GITHUB_OUTPUT"
+          echo "key=exts-linux-deps-${{ runner.os }}-$NATIVE_RUNNER_LABEL-${{ hashFiles('scripts/deps/fetch-linux-deps.sh', 'scripts/build/build-linux-l4d2.sh', 'scripts/package/stage-artifact.py', 'scripts/package/package-release.py', 'scripts/package/package-map.json', 'Makefile', 'configure.py', 'AMBuildScript', 'PackageScript') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore dependency cache
         id: deps-cache-restore
@@ -76,8 +109,8 @@ jobs:
           key: ${{ steps.cache-key.outputs.key }}
 
   build-exts-linux:
-    runs-on: ubuntu-22.04
-    needs: deps-exts-linux
+    runs-on: ${{ needs.native-runners.outputs.linux }}
+    needs: [native-runners, deps-exts-linux]
     outputs:
       basename: ${{ steps.artifact.outputs.basename }}
       release-tag: ${{ steps.artifact.outputs.release_tag }}
@@ -140,8 +173,8 @@ jobs:
           retention-days: 1
 
   release-linux:
-    runs-on: ubuntu-22.04
-    needs: build-exts-linux
+    runs-on: ${{ needs.native-runners.outputs.linux }}
+    needs: [native-runners, build-exts-linux]
 
     steps:
       - name: Checkout repository
@@ -177,7 +210,8 @@ jobs:
           retention-days: 14
 
   deps-exts-windows:
-    runs-on: windows-2022
+    runs-on: ${{ needs.native-runners.outputs.windows }}
+    needs: native-runners
     outputs:
       cache-key: ${{ steps.cache-key.outputs.key }}
 
@@ -193,8 +227,10 @@ jobs:
       - name: Resolve dependency cache key
         id: cache-key
         shell: bash
+        env:
+          NATIVE_RUNNER_LABEL: ${{ needs.native-runners.outputs.windows }}
         run: |
-          echo "key=exts-windows-deps-${{ runner.os }}-${{ hashFiles('scripts/deps/fetch-windows-deps.ps1', 'scripts/build/build-windows-l4d2.ps1', 'scripts/package/stage-artifact.py', 'scripts/package/package-release.py', 'scripts/package/package-map.json', 'Makefile', 'configure.py', 'AMBuildScript', 'PackageScript') }}" >> "$GITHUB_OUTPUT"
+          echo "key=exts-windows-deps-${{ runner.os }}-$NATIVE_RUNNER_LABEL-${{ hashFiles('scripts/deps/fetch-windows-deps.ps1', 'scripts/build/build-windows-l4d2.ps1', 'scripts/package/stage-artifact.py', 'scripts/package/package-release.py', 'scripts/package/package-map.json', 'Makefile', 'configure.py', 'AMBuildScript', 'PackageScript') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore dependency cache
         id: deps-cache-restore
@@ -216,8 +252,8 @@ jobs:
           key: ${{ steps.cache-key.outputs.key }}
 
   build-exts-windows:
-    runs-on: windows-2022
-    needs: deps-exts-windows
+    runs-on: ${{ needs.native-runners.outputs.windows }}
+    needs: [native-runners, deps-exts-windows]
     outputs:
       basename: ${{ steps.artifact.outputs.basename }}
 
@@ -267,8 +303,8 @@ jobs:
           retention-days: 1
 
   release-windows:
-    runs-on: windows-2022
-    needs: build-exts-windows
+    runs-on: ${{ needs.native-runners.outputs.windows }}
+    needs: [native-runners, build-exts-windows]
 
     steps:
       - name: Checkout repository

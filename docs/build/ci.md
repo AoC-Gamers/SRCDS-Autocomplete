@@ -5,10 +5,15 @@ empaqueta y valida mediante Make. Sonar, cobertura y pruebas de sus herramientas
 permanecen fuera del pipeline y de `make test-ci`.
 
 El workflow se activa por push a main/develop, tags `v*`, PRs con rutas relevantes
-y ejecución manual. Linux usa Ubuntu 22.04; Windows, Windows 2022. Cada plataforma
-restaura sus dependencias y conserva el build junto con su recibo para empaquetarlo
-en un job posterior. La caché incluye scripts/mapa/Make/configuración del build;
-no equivale a un lock de las ramas móviles descargadas.
+y ejecución manual. Las fases de dependencias, compilación y empaquetado nativos
+usan la etiqueta configurada para su plataforma en las variables de organización
+`L4D2_EXT_LINUX_RUNNER` y `L4D2_EXT_WINDOWS_RUNNER`. Ambas deben estar habilitadas
+para el repositorio. Si alguna falta, está vacía o solo contiene espacios, el job
+previo indica cuál y detiene las fases nativas.
+
+Cada plataforma restaura sus dependencias y conserva el build con su recibo para
+empaquetarlo en un job posterior. La caché distingue la etiqueta del runner y
+la configuración del build. Las ramas de dependencias siguen siendo móviles.
 
 `make release-identity-linux` / `make release-identity-windows` resuelven identidad
 sin publicar. Las variables `AOC_REF_TYPE`, `AOC_REF_NAME` y `AOC_COMMIT_SHA`
