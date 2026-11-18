@@ -72,9 +72,9 @@ paquetes de runtime proceden de GCC 16 y no cambian el compilador GCC 15 usado
 para generar el candidato. Python 3.14.4 y AMBuild conducen la compilación;
 SourceMod 1.12, Metamod 1.12 y HL2SDK L4D2 son dependencias de desarrollo.
 
-Los ZIP Linux publicados por CI se generan en Ubuntu 22.04 con GCC 11.4.0;
-son artefactos distintos de los candidatos compilados localmente con GCC 15.2.
-Ambos se validan como ELF32: compatibilidad de carga no acredita pruebas con
+CI selecciona el runner Linux según la configuración descrita en
+[CI y canales](docs/build/ci.md). El ZIP de CI y los candidatos locales se
+validan como ELF32: compatibilidad de carga no acredita pruebas con
 jugadores ni establece esas versiones como mínimos del producto. Registrar el
 commit de cada SDK y los SHA256 del ZIP al repetir una validación.
 

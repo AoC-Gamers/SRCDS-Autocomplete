@@ -20,6 +20,10 @@
 
 ### Desarrollo
 
+- **CI:** los builds nativos seleccionan el runner con las variables de
+  organización `L4D2_EXT_LINUX_RUNNER` y `L4D2_EXT_WINDOWS_RUNNER`. Habilita
+  ambas para el repositorio antes de ejecutar el workflow.
+
 - **Compilación:** Make unifica la compilación, las pruebas y el empaquetado en
   local y en CI. El empaquetador comprueba que el binario tenga la arquitectura
   esperada, corresponda a las fuentes usadas y lleve los recursos y la licencia.
