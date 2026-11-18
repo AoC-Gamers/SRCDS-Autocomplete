@@ -75,7 +75,7 @@ def validate_receipt(root, receipt_path, kind="native"):
         raise ValueError("Raw Python coverage data changed")
     for item in receipt.get("counter_inputs", []):
         counter = (receipt_path.parent / item["counter"]).resolve()
-        if counter.parent != receipt_path.parent.resolve() or digest(counter) != item["sha256"]:
+        if not counter.is_relative_to(receipt_path.parent.resolve()) or digest(counter) != item["sha256"]:
             raise ValueError("Raw native coverage counters changed")
     area = root / ("scripts" if kind == "python" else "extension")
     try:

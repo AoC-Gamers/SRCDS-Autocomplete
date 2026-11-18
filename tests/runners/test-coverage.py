@@ -1,4 +1,4 @@
-"""Measure the real decoder and preserve unexecuted product lines as uncovered."""
+"""Measure canonical console/decoder execution and retain zero-hit baseline lines."""
 import argparse
 import importlib.util
 import json
@@ -23,8 +23,8 @@ entries=sonar.compilation_database(ROOT,a.compile_commands)
 flags='-m32 --coverage -fprofile-abs-path'
 merged={};units={};inputs=[]
 with (output/'build.log').open('w') as log:
-    # Compile all actual product units. The console code is intentionally not
-    # executed outside SRCDS and contributes gcno zero-hit lines, never fake hits.
+    # Baseline every actual product unit with the build's compiler flags. Merge
+    # real harness counters later; all other executable lines retain zero hits.
     for index,entry in enumerate(entries):
         command=[];args=iter(entry['arguments'])
         for arg in args:
@@ -39,6 +39,13 @@ with (output/'build.log').open('w') as log:
                     '-I'+str(ROOT/'extension/include'),str(ROOT/'tests/native/hex-string-test.cpp'),
                     str(units['hex-string.cpp']),'-o',str(binary)],stdout=log,stderr=subprocess.STDOUT,check=True)
     subprocess.run([str(binary)],stdout=log,stderr=subprocess.STDOUT,check=True)
+console=output/'console'
+subprocess.run([sys.executable,str(ROOT/'tests/runners/test-console.py'),'--coverage-output',str(console)],check=True)
+for index,counter in enumerate(sorted(console.glob('*.gcda'))):
+    payload=provenance.read_gcov(counter,ROOT)
+    (output/f'console-gcov-{index}.json').write_text(json.dumps(payload))
+    provenance.merge_lines(ROOT,payload,merged)
+    inputs.append({'counter':counter.relative_to(output).as_posix(),'sha256':provenance.digest(counter)})
 for index,obj in enumerate(units.values()):
     counter=obj.with_suffix('.gcda')
     executed=counter.is_file()

@@ -25,3 +25,16 @@ nuevo. `coverage-tooling-test` rechaza fuentes/informes obsoletos y contadores
 no ejecutados con hits. Estas herramientas no forman parte de `test-ci` ni Actions.
 `test-exports TEST_EXPORT_OPTIONS=--same-text` exige además código máquina `.text`
 idéntico al ZIP de referencia, útil para cambios puramente sintácticos.
+
+`make test-console` ejecuta el código canónico de `extension.cpp` en x86 con
+ASan/UBSan y proveedores controlados del SDK. Conserva el shim `CTextConsole`
+real y usa archivos/directorios reales. Comprueba autocompletado manual y del
+motor, clasificación/orden, tablas y prefijos comunes, truncamiento, buffers,
+logging, gamedata, carga, descarga y fallos controlados. No carga el engine de
+SRCDS ni acredita su ABI: el build nativo con SDKs reales se valida por separado.
+La suite forma parte de `test-ci`; solo su medición gcov es local.
+
+`canonical_cli_test.py` invoca los scripts canónicos sobre entradas de prueba
+aisladas, incluida exportación de órdenes compiladas, recibos, staging/ZIP,
+validación, identidad, limpieza y scanner con ejecutables simulados sin red.
+No se remapean hits desde copias temporales a fuentes del repositorio.

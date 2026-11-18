@@ -26,6 +26,7 @@ help:
 		'  make test TEST_OUTPUT=<new-dir>  Run package and interface regressions' \
 		'  make test-ci TEST_OUTPUT=<new-dir>  Run product checks without Sonar' \
 		'  make test-hex-string      Run native x86 decoder regression with ASan/UBSan' \
+		'  make test-console         Execute canonical console code with controlled SDK providers' \
 		'  make test-exports ABI_BASELINE_ZIP=<zip>  Compare ELF target and exported symbols' \
 		'  make check-ci             Lint GitHub Actions (actionlint required)' \
 		'  make validate-artifact-linux|validate-artifact-windows  Validate tree and ZIP' \
@@ -95,7 +96,7 @@ TEST_OUTPUT ?=
 test:
 	$(PYTHON) "$(ROOT_DIR)/tests/runners/test.py" --output "$(TEST_OUTPUT)"
 
-test-ci: test test-hex-string
+test-ci: test test-hex-string test-console
 
 sonar:
 	@$(PYTHON) "$(ROOT_DIR)/scripts/tools/make_sonar.py" analyze --compile-commands "$(LINUX_BUILD_DIR)/compile_commands.json"
@@ -137,3 +138,7 @@ test-coverage:
 
 coverage-tooling-test:
 	$(PYTHON) "$(ROOT_DIR)/tests/python/coverage_test.py"
+
+.PHONY: test-console
+test-console:
+	$(PYTHON) "$(ROOT_DIR)/tests/runners/test-console.py"

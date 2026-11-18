@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- Se amplían las pruebas reales de consola y automatización, sin modificar el
+  código del producto ni excluir líneas de la medición.
+- El harness x86 ejecuta la implementación canónica con proveedores controlados,
+  shim de consola real y archivos reales, también bajo ASan/UBSan.
+- Los recibos de cobertura validan contadores en subdirectorios y rechazan
+  alteraciones o rutas que escapen de la ejecución medida.
+
 - Se corrige el contexto de sonar-cxx para ignorar únicamente directorios de include
   opcionales ausentes, conservando los flags del build y el parser estricto.
 - Los errores del scanner impiden aceptar un análisis aunque su proceso devuelva éxito.

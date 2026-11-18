@@ -44,8 +44,13 @@ relevante exige regenerar la cobertura; no se aceptan resultados desactualizados
 
 Python mide líneas realmente ejecutadas, incluidos subprocesos; las copias de
 fuentes en directorios temporales de pruebas no aportan hits a las canónicas.
-GCC/gcov mide el decodificador real en x86 e incluye las demás unidades nativas
-como no ejecutadas. El código de consola que requiere SRCDS permanece sin hits.
+GCC/gcov mide el decodificador y la implementación completa de consola en x86.
+El harness incluye sin modificar `extension.cpp`, usa el shim real de consola,
+proveedores controlados para SDK/engine y directorios reales para los archivos.
+El baseline compila además todas las unidades con los flags reales del build;
+las líneas que ningún ensayo ejecuta permanecen sin hits. No se atribuyen hits
+al SDK, a los proveedores ni a copias temporales del producto. Estas pruebas
+controladas no acreditan carga ni jugabilidad en un servidor SRCDS real.
 No se importan contadores de binarios mutados ni se estima cobertura desde la
 compilación. Las pruebas ASan/UBSan continúan por separado mediante `test-ci`.
 

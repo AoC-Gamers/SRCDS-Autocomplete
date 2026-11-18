@@ -12,8 +12,13 @@ if not a.output:
 output=Path(a.output).absolute()
 output.mkdir(parents=True, exist_ok=False)
 root=Path(__file__).resolve().parents[2]
-result=subprocess.run([sys.executable,'-m','unittest','discover','-s',str(root/'tests/python'),'-p','package_test.py','-v'],capture_output=True,text=True)
-log=result.stdout+result.stderr
+logs=[]
+status=0
+for pattern in ('package_test.py', 'canonical_cli_test.py'):
+    result=subprocess.run([sys.executable,'-m','unittest','discover','-s',str(root/'tests/python'),'-p',pattern,'-v'],capture_output=True,text=True)
+    logs.append(result.stdout+result.stderr)
+    status=status or result.returncode
+log=''.join(logs)
 (output/'tests.log').write_text(log)
 print(log,end='')
-raise SystemExit(result.returncode)
+raise SystemExit(status)
