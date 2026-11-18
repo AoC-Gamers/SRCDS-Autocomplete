@@ -43,6 +43,11 @@ $env:MMSOURCE_DIR = $mmsourceDir
 if (-not $env:AMBUILD_DIR) { $env:AMBUILD_DIR = Join-Path $depsDir "ambuild" }
 $configureScript = if ($env:CONFIGURE_SCRIPT) { $env:CONFIGURE_SCRIPT } else { Join-Path $root "configure.py" }
 
+$guardPython = if ($env:PYTHON) { $env:PYTHON } else { "python" }
+$buildDir = & $guardPython (Join-Path $root "scripts/tools/output_paths.py") $root $buildDir `
+  $depsDir $hl2sdkDir $sourcemodDir $mmsourceDir $env:AMBUILD_DIR $venvDir
+if ($LASTEXITCODE -ne 0) { throw "Unsafe build destination; no files were changed." }
+
 Remove-Item -Force (Join-Path $buildDir "build-receipt.json") -ErrorAction SilentlyContinue
 
 $venvPython = Join-Path $venvDir "Scripts\python.exe"

@@ -22,6 +22,10 @@ Las dependencias se ubican en `.deps/exts-<platform>/`, el build en
 `.build/<platform>-l4d2/`, staging en `.build/package-exts-<platform>/`,
 el árbol final en `dist/<platform>/artifact/` y ZIP en `dist/release/`.
 `LINUX_*_DIR`, `WINDOWS_*_DIR` y `PYTHON` permiten seleccionar otras rutas.
+Los destinos destructivos de build y staging deben ser subdirectorios de `.build/`
+o `dist/` del repositorio; se rechazan las propias raíces, las fuentes, destinos
+externos, enlaces y rutas que se solapen con entradas o SDKs. Los overrides de
+salida deben mantenerse dentro de esas áreas gestionadas.
 Los directorios de dependencias externos se usan tal como están: no se actualizan
 al compilar. Las rutas relativas indicadas por el usuario se interpretan desde su
 cwd; los defaults se resuelven desde el Makefile incluso con `make -f` externo.
@@ -33,7 +37,9 @@ contiene SDK, compiladores, tests, informes, mapa ni archivos privados.
 
 El adaptador del backend AMBuild 2.1 exporta `compile_commands.json` desde su
 grafo de compilación exitoso, sin reconstruir ni modificar las órdenes. El build emite un recibo de fuentes/binario y un
-inventario efectivo `dependency-revisions.json`. Un build fallido no emite recibo
+inventario efectivo `dependency-revisions.json`. El inventario se escribe primero
+y el recibo de éxito se instala al final mediante reemplazo atómico. Cada intento
+invalida su recibo anterior. Un build fallido no emite recibo
 válido. Staging comprueba ese recibo; cambiar fuentes o scripts exige recompilar.
 No hay garantía de reproducibilidad byte a byte ni de entradas transitivas fijadas.
 La arquitectura se valida como ELF32 i386 shared object o PE32 i386 DLL; esa revisión

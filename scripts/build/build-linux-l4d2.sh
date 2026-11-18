@@ -43,6 +43,10 @@ AMBUILD_DIR="${AMBUILD_DIR:-$DEPS_DIR/ambuild}"
 export HL2SDK_DIR SOURCEMOD_DIR MMSOURCE_DIR AMBUILD_DIR
 CONFIGURE_SCRIPT="${CONFIGURE_SCRIPT:-$ROOT_DIR/configure.py}"
 
+# Validate before invalidating receipts or removing an existing directory.
+BUILD_DIR="$("${PYTHON:-python3}" "$ROOT_DIR/scripts/tools/output_paths.py" "$ROOT_DIR" "$BUILD_DIR" \
+  "$DEPS_DIR" "$HL2SDK_DIR" "$SOURCEMOD_DIR" "$MMSOURCE_DIR" "$AMBUILD_DIR" "$VENV_DIR")"
+
 # Invalidate prior success before any preflight can fail.
 rm -f "$BUILD_DIR/build-receipt.json"
 

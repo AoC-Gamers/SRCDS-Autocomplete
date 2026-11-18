@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- Build y staging validan destinos gestionados antes de borrar directorios o
+  invalidar recibos, rechazando fuentes, enlaces y solapamientos con dependencias.
+- Los recibos de éxito se escriben atómicamente después de validar el producto y
+  completar el inventario; un inventario fallido ya no permite empaquetar.
+
 - Se unifican los nombres `.env.example`, `.env.secret` y `.env.secret.example`;
   el secreto local permanece ignorado por Git.
 

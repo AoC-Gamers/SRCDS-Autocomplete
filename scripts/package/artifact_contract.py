@@ -2,6 +2,8 @@
 from __future__ import annotations
 import hashlib
 import json
+import os
+import tempfile
 from pathlib import Path, PurePosixPath
 import stat
 import struct
@@ -156,13 +158,24 @@ def receipt_path(tree):
     return tree.parent/'build-receipt.json' if tree.name == 'package' else tree.parent/(tree.name+'.receipt.json')
 
 
+def atomic_json(path, value):
+    descriptor, temporary = tempfile.mkstemp(prefix=path.name+'.', dir=path.parent)
+    try:
+        with os.fdopen(descriptor, 'w', encoding='utf-8') as stream:
+            json.dump(value, stream, indent=2)
+            stream.write('\n')
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
 def write_receipt(tree, root, platform):
     binaries = {n: hashlib.sha256(d).hexdigest() for n,d in inventory(tree).items() if n.endswith(('.so', '.dll'))}
     receipt = {'sources': source_digest(root), 'platform': platform, 'binaries': binaries}
     database = tree.parent/'compile_commands.json'
     if tree.name == 'package' and database.is_file():
         receipt['compilation_database'] = hashlib.sha256(database.read_bytes()).hexdigest()
-    receipt_path(tree).write_text(json.dumps(receipt, indent=2)+'\n')
+    atomic_json(receipt_path(tree), receipt)
 
 
 def verify_receipt(tree, root, platform):

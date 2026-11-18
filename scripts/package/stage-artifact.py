@@ -3,6 +3,9 @@ import argparse
 from pathlib import Path
 import shutil
 import tempfile
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+from output_paths import managed_output
 from artifact_contract import expected, source_file, validate_tree, verify_receipt, write_receipt
 
 
@@ -14,9 +17,7 @@ def main():
     parser.add_argument('--platform', required=True, choices=['linux', 'windows'])
     args = parser.parse_args()
     root, source = Path(args.root).resolve(), Path(args.build_dir).resolve()
-    target = Path(args.output_dir).absolute() if args.output_dir else root/'dist/sourcemod/artifact'
-    if target.is_symlink() or source == target.resolve() or source.is_relative_to(target.resolve()) or target.resolve().is_relative_to(source):
-        raise ValueError('Stage source and destination must be separate, unlinked trees')
+    target = managed_output(root, args.output_dir or root/'dist/sourcemod/artifact', (source, root/'.deps'))
     # Reject extras before selecting files: never silently filter SDKs or stale outputs.
     raw = source.name == 'package'
     validate_tree(source, root, args.platform, documentation=not raw)
