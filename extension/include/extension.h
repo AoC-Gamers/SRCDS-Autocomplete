@@ -2,6 +2,7 @@
 #define _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_
 
 #include "smsdk_ext.h"
+#include "hex-string.h"
 
 #if SOURCE_ENGINE != SE_LEFT4DEAD2
 # error "srcds-autocomplete is now maintained as an L4D2-only extension."
@@ -22,15 +23,13 @@ class AutoCompleteHook : public SDKExtension,
 						 public IConCommandBaseAccessor
 {
 public:
-	virtual bool SDK_OnLoad(char *error, size_t maxlength, bool late);
-	virtual void SDK_OnUnload();
+	bool SDK_OnLoad(char *error, size_t maxlength, bool late) override;
+	void SDK_OnUnload() override;
 	bool RegisterConCommandBase(ConCommandBase *pVar) override;
 public:
 #if defined SMEXT_CONF_METAMOD
-	virtual bool SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlength, bool late);
+	bool SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlength, bool late) override;
 #endif
 };
-
-size_t UTIL_DecodeHexString(unsigned char *buffer, size_t maxlength, const char *hexstr);
 
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_

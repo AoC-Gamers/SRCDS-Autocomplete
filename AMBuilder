@@ -6,6 +6,7 @@ projectName = 'autocomplete'
 # smsdk_ext.cpp will be automatically added later
 sourceFiles = [
   os.path.join('extension', 'src', 'extension.cpp'),
+  os.path.join('extension', 'src', 'hex-string.cpp'),
 ]
 
 asm_source = os.path.join(Extension.sm_root, 'public', 'asm', 'asm.c')

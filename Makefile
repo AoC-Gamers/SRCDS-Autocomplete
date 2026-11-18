@@ -1,6 +1,7 @@
 SHELL := /usr/bin/env bash
 
-ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+ROOT_DIR := $(shell cd "$$(dirname "$(MAKEFILE_LIST)")" && pwd)
+.DEFAULT_GOAL := help
 ifeq ($(OS),Windows_NT)
 PYTHON ?= python
 else
@@ -22,6 +23,20 @@ WINDOWS_RELEASE_BASENAME ?= srcds-autocomplete-local-windows
 help:
 	@printf '%s\n' \
 		'Available targets:' \
+		'  make test TEST_OUTPUT=<new-dir>  Run package and interface regressions' \
+		'  make test-ci TEST_OUTPUT=<new-dir>  Run product checks without Sonar' \
+		'  make test-hex-string      Run native x86 decoder regression with ASan/UBSan' \
+		'  make test-console         Execute canonical console code with controlled SDK providers' \
+		'  make test-exports ABI_BASELINE_ZIP=<zip>  Compare ELF target and exported symbols' \
+		'  make check-ci             Lint GitHub Actions (actionlint required)' \
+		'  make validate-artifact-linux|validate-artifact-windows  Validate tree and ZIP' \
+		'  make release-identity-linux|release-identity-windows  Resolve identity from AOC_REF_*' \
+		'  make sonar-cppcheck       Analyze locally with the real build database' \
+		'  make sonar                Explicit configured Sonar analysis; waits for gate' \
+		'  make sonar-tooling-test   Offline analyzer tests (local only)' \
+		'  make test-python-coverage TEST_OUTPUT=<new-dir>  Measure canonical Python sources' \
+		'  make test-coverage TEST_OUTPUT=<new-dir>  Measure decoder and unexecuted native units' \
+		'  make coverage-tooling-test  Check source/report provenance (local only)' \
 		'  make help                 Show this help message' \
 		'  make deps-exts-linux      Fetch Linux extension dependencies into .deps/exts-linux/' \
 		'  make deps-exts-windows    Fetch Windows extension dependencies into .deps/exts-windows/' \
@@ -36,36 +51,94 @@ help:
 		'  make clean-all            Remove all build outputs and dependencies'
 
 deps-exts-linux:
-	DEPS_DIR="$(LINUX_DEPS_DIR)" bash ./scripts/fetch-linux-deps.sh
+	DEPS_DIR="$(LINUX_DEPS_DIR)" bash "$(ROOT_DIR)/scripts/deps/fetch-linux-deps.sh"
 
 deps-exts-windows:
-	DEPS_DIR="$(WINDOWS_DEPS_DIR)" pwsh -File ./scripts/fetch-windows-deps.ps1
+	DEPS_DIR="$(WINDOWS_DEPS_DIR)" pwsh -File "$(ROOT_DIR)/scripts/deps/fetch-windows-deps.ps1"
 
 build-exts-linux:
-	DEPS_DIR="$(LINUX_DEPS_DIR)" BUILD_DIR="$(LINUX_BUILD_DIR)" bash ./scripts/build-linux-l4d2.sh
+	DEPS_DIR="$(LINUX_DEPS_DIR)" BUILD_DIR="$(LINUX_BUILD_DIR)" bash "$(ROOT_DIR)/scripts/build/build-linux-l4d2.sh"
 
 build-exts-windows:
-	DEPS_DIR="$(WINDOWS_DEPS_DIR)" BUILD_DIR="$(WINDOWS_BUILD_DIR)" pwsh -File ./scripts/build-windows-l4d2.ps1
+	DEPS_DIR="$(WINDOWS_DEPS_DIR)" BUILD_DIR="$(WINDOWS_BUILD_DIR)" pwsh -File "$(ROOT_DIR)/scripts/build/build-windows-l4d2.ps1"
 
 package-exts-linux:
-	$(PYTHON) ./scripts/stage-artifact.py . "$(LINUX_BUILD_DIR)/package" "$(LINUX_PACKAGE_DIR)"
+	$(PYTHON) "$(ROOT_DIR)/scripts/package/stage-artifact.py" "$(ROOT_DIR)" "$(LINUX_BUILD_DIR)/package" "$(LINUX_PACKAGE_DIR)" --platform linux
 
 package-exts-windows:
-	$(PYTHON) ./scripts/stage-artifact.py . "$(WINDOWS_BUILD_DIR)/package" "$(WINDOWS_PACKAGE_DIR)"
+	$(PYTHON) "$(ROOT_DIR)/scripts/package/stage-artifact.py" "$(ROOT_DIR)" "$(WINDOWS_BUILD_DIR)/package" "$(WINDOWS_PACKAGE_DIR)" --platform windows
 
 release-linux:
-	$(PYTHON) ./scripts/stage-artifact.py . "$(LINUX_PACKAGE_DIR)" "$(LINUX_ARTIFACT_DIR)"
-	$(PYTHON) ./scripts/package-release.py --root . --artifact-dir "$(LINUX_ARTIFACT_DIR)" --basename "$(or $(RELEASE_BASENAME),$(LINUX_RELEASE_BASENAME))"
+	$(PYTHON) "$(ROOT_DIR)/scripts/package/stage-artifact.py" "$(ROOT_DIR)" "$(LINUX_PACKAGE_DIR)" "$(LINUX_ARTIFACT_DIR)" --platform linux
+	$(PYTHON) "$(ROOT_DIR)/scripts/package/package-release.py" --root "$(ROOT_DIR)" --artifact-dir "$(LINUX_ARTIFACT_DIR)" --basename "$(or $(RELEASE_BASENAME),$(LINUX_RELEASE_BASENAME))" --platform linux
 
 release-windows:
-	$(PYTHON) ./scripts/stage-artifact.py . "$(WINDOWS_PACKAGE_DIR)" "$(WINDOWS_ARTIFACT_DIR)"
-	$(PYTHON) ./scripts/package-release.py --root . --artifact-dir "$(WINDOWS_ARTIFACT_DIR)" --basename "$(or $(RELEASE_BASENAME),$(WINDOWS_RELEASE_BASENAME))"
+	$(PYTHON) "$(ROOT_DIR)/scripts/package/stage-artifact.py" "$(ROOT_DIR)" "$(WINDOWS_PACKAGE_DIR)" "$(WINDOWS_ARTIFACT_DIR)" --platform windows
+	$(PYTHON) "$(ROOT_DIR)/scripts/package/package-release.py" --root "$(ROOT_DIR)" --artifact-dir "$(WINDOWS_ARTIFACT_DIR)" --basename "$(or $(RELEASE_BASENAME),$(WINDOWS_RELEASE_BASENAME))" --platform windows
 
 clean-linux:
-	rm -rf "$(LINUX_BUILD_DIR)" "$(LINUX_PACKAGE_DIR)" "$(ROOT_DIR)/dist/linux"
+	$(PYTHON) "$(ROOT_DIR)/scripts/tools/clean.py" "$(ROOT_DIR)" "$(LINUX_BUILD_DIR)" "$(LINUX_PACKAGE_DIR)" "$(ROOT_DIR)/dist/linux"
 
 clean-windows:
-	rm -rf "$(WINDOWS_BUILD_DIR)" "$(WINDOWS_PACKAGE_DIR)" "$(ROOT_DIR)/dist/windows"
+	$(PYTHON) "$(ROOT_DIR)/scripts/tools/clean.py" "$(ROOT_DIR)" "$(WINDOWS_BUILD_DIR)" "$(WINDOWS_PACKAGE_DIR)" "$(ROOT_DIR)/dist/windows"
 
 clean-all:
-	rm -rf "$(ROOT_DIR)/.build" "$(ROOT_DIR)/dist" "$(ROOT_DIR)/.deps"
+	$(PYTHON) "$(ROOT_DIR)/scripts/tools/clean.py" "$(ROOT_DIR)" "$(ROOT_DIR)/.build" "$(ROOT_DIR)/dist" "$(ROOT_DIR)/.deps"
+
+validate-artifact-linux:
+	$(PYTHON) "$(ROOT_DIR)/scripts/ci/validate-artifact.py" --artifact-dir "$(LINUX_ARTIFACT_DIR)" --platform linux --zip "$(ROOT_DIR)/dist/release/$(or $(RELEASE_BASENAME),$(LINUX_RELEASE_BASENAME)).zip"
+
+validate-artifact-windows:
+	$(PYTHON) "$(ROOT_DIR)/scripts/ci/validate-artifact.py" --artifact-dir "$(WINDOWS_ARTIFACT_DIR)" --platform windows --zip "$(ROOT_DIR)/dist/release/$(or $(RELEASE_BASENAME),$(WINDOWS_RELEASE_BASENAME)).zip"
+
+.PHONY: test test-ci sonar sonar-cppcheck sonar-tooling-test check-ci release-identity-linux release-identity-windows validate-artifact-linux validate-artifact-windows
+TEST_OUTPUT ?=
+test:
+	$(PYTHON) "$(ROOT_DIR)/tests/runners/test.py" --output "$(TEST_OUTPUT)"
+
+test-ci: test test-hex-string test-console
+
+sonar:
+	@$(PYTHON) "$(ROOT_DIR)/scripts/tools/make_sonar.py" analyze --compile-commands "$(LINUX_BUILD_DIR)/compile_commands.json"
+
+sonar-cppcheck:
+	@$(PYTHON) "$(ROOT_DIR)/scripts/tools/make_sonar.py" cppcheck --compile-commands "$(LINUX_BUILD_DIR)/compile_commands.json"
+
+sonar-tooling-test:
+	$(PYTHON) "$(ROOT_DIR)/tests/python/sonar_tooling_test.py"
+
+check-ci:
+	actionlint "$(ROOT_DIR)/.github/workflows/build.yml"
+
+release-identity-linux:
+	@$(PYTHON) "$(ROOT_DIR)/scripts/package/release-identity.py" --name srcds-autocomplete --platform linux
+
+release-identity-windows:
+	@$(PYTHON) "$(ROOT_DIR)/scripts/package/release-identity.py" --name srcds-autocomplete --platform windows
+
+.PHONY: test-hex-string
+test-hex-string:
+	$(PYTHON) "$(ROOT_DIR)/tests/runners/test-hex-string.py"
+
+.PHONY: test-exports
+test-exports:
+	$(PYTHON) "$(ROOT_DIR)/tests/runners/compare-exports.py" --baseline-zip "$(ABI_BASELINE_ZIP)" --current "$(LINUX_BUILD_DIR)/package/addons/sourcemod/extensions/autocomplete.ext.2.l4d2.so" $(TEST_EXPORT_OPTIONS)
+
+.PHONY: deps-test-coverage test-python-coverage test-coverage coverage-tooling-test
+COVERAGE_VENV_DIR ?= $(ROOT_DIR)/.deps/test-coverage
+COVERAGE_PYTHON ?= $(COVERAGE_VENV_DIR)/bin/python
+deps-test-coverage:
+	PYTHON="$(PYTHON)" COVERAGE_VENV_DIR="$(COVERAGE_VENV_DIR)" bash "$(ROOT_DIR)/scripts/deps/fetch-test-coverage.sh"
+
+test-python-coverage:
+	"$(COVERAGE_PYTHON)" "$(ROOT_DIR)/tests/runners/test-python-coverage.py" --output "$(TEST_OUTPUT)"
+
+test-coverage:
+	$(PYTHON) "$(ROOT_DIR)/tests/runners/test-coverage.py" --output "$(TEST_OUTPUT)" --compile-commands "$(LINUX_BUILD_DIR)/compile_commands.json"
+
+coverage-tooling-test:
+	$(PYTHON) "$(ROOT_DIR)/tests/python/coverage_test.py"
+
+.PHONY: test-console
+test-console:
+	$(PYTHON) "$(ROOT_DIR)/tests/runners/test-console.py"
