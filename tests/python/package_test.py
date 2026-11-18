@@ -40,7 +40,7 @@ class Packages(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix='autocomplete tests ')
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)/'source copy'
-        shutil.copytree(ROOT, self.root, ignore=shutil.ignore_patterns('.git','.build','.deps','dist','__pycache__','.env','env.secret'))
+        shutil.copytree(ROOT, self.root, ignore=shutil.ignore_patterns('.git','.build','.deps','dist','__pycache__','.env','.env.secret'))
         self.raw = self.root/'.build/linux-l4d2/package'
         self.raw.mkdir(parents=True)
         for name in contract.expected(self.root, 'linux', False):
@@ -115,7 +115,7 @@ class Packages(unittest.TestCase):
     def test_zip_extras_and_duplicates_rejected(self):
         self.make('package-exts-linux');self.make('release-linux')
         z=self.root/'dist/release/srcds-autocomplete-local-linux.zip'
-        with zipfile.ZipFile(z,'a') as out:out.writestr('env.secret','example')
+        with zipfile.ZipFile(z,'a') as out:out.writestr('.env.secret','example')
         self.make('validate-artifact-linux',success=False)
 
     def test_zip_traversal_and_links_rejected(self):
@@ -143,7 +143,7 @@ class Packages(unittest.TestCase):
         self.assertTrue((external/'keep').is_file())
 
     def test_map_cannot_admit_secret(self):
-        p=self.root/contract.MAP;data=json.loads(p.read_text());data['documentation'].append('env.secret');p.write_text(json.dumps(data))
+        p=self.root/contract.MAP;data=json.loads(p.read_text());data['documentation'].append('.env.secret');p.write_text(json.dumps(data))
         with self.assertRaises(ValueError):contract.expected(self.root,'linux')
 
     def test_final_zip_binary_tamper_rejected(self):

@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- Se unifican los nombres `.env.example`, `.env.secret` y `.env.secret.example`;
+  el secreto local permanece ignorado por Git.
+
 - Se rechazan enlaces y archivos especiales en fuentes de documentación del paquete,
   incluidos enlaces en directorios padres, conservando el staging válido si falla.
 - Las pruebas de orquestación Sonar quedan exclusivamente en la suite local.
@@ -25,7 +28,7 @@
 - Se incorpora cobertura real local con hashes de fuentes, informes y contadores;
   el código de consola sin ejecutar se mantiene como no cubierto.
 
-- La configuración Sonar se carga desde `.env`, con plantilla pública `env.example`,
+- La configuración Sonar se carga desde `.env`, con plantilla pública `.env.example`,
   sin depender de `sonar-project.properties`; conserva el parser estricto.
 
 - Se corrige la decodificación hexadecimal de firmas: las secuencias malformadas

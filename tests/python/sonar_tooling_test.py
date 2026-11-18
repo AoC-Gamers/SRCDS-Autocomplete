@@ -83,6 +83,12 @@ class Sonar(unittest.TestCase):
             sonar.validate_cppcheck(subprocess.CompletedProcess([],0,'','<results><errors/></results>'),root,root,'')
             with self.assertRaises(sonar.SonarError):sonar.validate_cppcheck(subprocess.CompletedProcess([],1,'','failure'),root,root,'')
             with self.assertRaises(sonar.SonarError):sonar.validate_cppcheck(subprocess.CompletedProcess([],0,'','<results/>'),root,root,'')
+    def test_dot_prefixed_secret_file_is_loaded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            (root/'.env.secret').write_text('SONAR_TOKEN=example-fixture\n')
+            with patch.dict(os.environ,{},clear=True):
+                self.assertEqual(sonar.configuration(root)['SONAR_TOKEN'],'example-fixture')
     def test_remote_http_rejected(self):
         with self.assertRaises(sonar.SonarError):sonar.scanner_context({'SONAR_HOST_URL':'http://example.org','SONAR_TOKEN':'example'})
     def test_gate_cannot_be_disabled(self):

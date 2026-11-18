@@ -48,5 +48,5 @@ __pycache__/
 tmp/
 temp/
 .tmp/
-env.secret
+.env.secret
 .scannerwork/

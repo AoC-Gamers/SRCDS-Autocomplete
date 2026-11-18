@@ -42,7 +42,7 @@ def dotenv_values(path, allowed):
             continue
         key, value = (part.strip() for part in line.split("=", 1))
         if path.name == ".env" and key == "SONAR_TOKEN":
-            raise SonarError("SONAR_TOKEN debe estar en env.secret o en el entorno.")
+            raise SonarError("SONAR_TOKEN debe estar en .env.secret o en el entorno.")
         if key not in allowed:
             continue
         if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
@@ -54,7 +54,7 @@ def dotenv_values(path, allowed):
 def configuration(root):
     # Read values as data, never source shell commands. Explicit environment wins.
     env = os.environ.copy()
-    for name, allowed in ((".env", SETTINGS), ("env.secret", {"SONAR_TOKEN"})):
+    for name, allowed in ((".env", SETTINGS), (".env.secret", {"SONAR_TOKEN"})):
         for key, value in dotenv_values(root / name, allowed).items():
             env.setdefault(key, value)
     return env
@@ -69,7 +69,7 @@ def scanner_context(env):
     if url.scheme == "http" and url.hostname not in {"localhost", "127.0.0.1", "::1"}:
         raise SonarError("Usa HTTPS para SonarQube; HTTP solo se admite en loopback.")
     if not env.get("SONAR_TOKEN", "").strip():
-        raise SonarError("Falta SONAR_TOKEN en env.secret o en el entorno.")
+        raise SonarError("Falta SONAR_TOKEN en .env.secret o en el entorno.")
     wait = env.get("SONAR_QUALITY_GATE_WAIT", "true")
     timeout = env.get("SONAR_QUALITY_GATE_TIMEOUT", "300")
     if wait != "true" or not timeout.isdecimal() or int(timeout) < 1:
