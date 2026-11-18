@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -105,5 +106,38 @@ class Sonar(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);(root/'.env').write_text('SONAR_TOKEN=example')
             with self.assertRaises(sonar.SonarError):sonar.configuration(root)
+
+class ScannerOrchestration(unittest.TestCase):
+    def setUp(self):
+        import package_test
+        package_test.Packages.setUp(self)
+        self.contract=package_test.contract
+
+    def cli(self, script, *args, **kwargs):
+        import canonical_cli_test
+        return canonical_cli_test.CanonicalCLI.cli(self, script, *args, **kwargs)
+
+    def test_canonical_scanner_orchestration_with_offline_providers(self):
+        spec=importlib.util.spec_from_file_location('scanner_product',ROOT/'scripts/tools/make_sonar.py')
+        sonar=importlib.util.module_from_spec(spec);spec.loader.exec_module(sonar)
+        database=self.raw.parent/'compile_commands.json'
+        entries=[{'directory':str(self.root),'file':str(source),
+                  'arguments':['g++','-m32','-std=c++17','-c',str(source),'-o','unit.o']}
+                 for source in (self.root/'extension').rglob('*.cpp')]
+        database.write_text(json.dumps(entries));self.contract.write_receipt(self.raw,self.root,'linux')
+        cppcheck=self.root/'cppcheck-provider';scanner=self.root/'scanner-provider'
+        cppcheck.write_text('#!'+sys.executable+'\nimport sys\nprint("<results><errors/></results>",file=sys.stderr)\n')
+        scanner.write_text('#!'+sys.executable+'\nimport os,sys,json\nfrom pathlib import Path\nPath(os.environ["ARGV_LOG"]).write_text(json.dumps(sys.argv))\nprint("QUALITY GATE STATUS: PASSED")\n')
+        cppcheck.chmod(0o755);scanner.chmod(0o755);log=self.root/'argv.json'
+        env={'SONAR_CPPCHECK':str(cppcheck),'SONAR_SCANNER':str(scanner),'SONAR_HOST_URL':'https://example.invalid',
+             'SONAR_TOKEN':'offline-fixture-secret','SONAR_COVERAGE_RECEIPT':'','SONAR_PYTHON_COVERAGE_RECEIPT':'','ARGV_LOG':str(log)}
+        with patch.dict(os.environ,env):
+            sonar.run('analyze',database,root=self.root)
+            self.assertNotIn(env['SONAR_TOKEN'],log.read_text())
+            sonar.run('cppcheck',database,root=self.root)
+            scanner.write_text('#!'+sys.executable+'\nimport sys\nprint("ERROR parser failed",file=sys.stderr)\n')
+            with self.assertRaises(sonar.SonarError):sonar.run('analyze',database,root=self.root)
+        self.cli('tools/make_sonar.py','analyze','--compile-commands',database,
+                 success=False,env={**os.environ,**env,'SONAR_HOST_URL':''})
 
 if __name__=='__main__':unittest.main()

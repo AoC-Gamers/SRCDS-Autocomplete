@@ -2,6 +2,14 @@
 
 ## Sin publicar
 
+- Se rechazan enlaces y archivos especiales en fuentes de documentación del paquete,
+  incluidos enlaces en directorios padres, conservando el staging válido si falla.
+- Las pruebas de orquestación Sonar quedan exclusivamente en la suite local.
+- La selección explícita de HL2SDK se usa tanto para compilar como para inventariar,
+  con resolución de rutas antes de cambiar el directorio de trabajo.
+- Se cierra cada referencia de gamedata también al fallar su lectura o la apertura
+  de la biblioteca dedicada, con regresiones de balance de cargas/cierres.
+
 - Se amplían las pruebas reales de consola y automatización, sin modificar el
   código del producto ni excluir líneas de la medición.
 - El harness x86 ejecuta la implementación canónica con proveedores controlados,

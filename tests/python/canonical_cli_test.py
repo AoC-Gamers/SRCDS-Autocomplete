@@ -1,5 +1,4 @@
 """Execute canonical product scripts; all mutable inputs/outputs stay in fixtures."""
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -8,7 +7,6 @@ import sqlite3
 import subprocess
 import sys
 import unittest
-from unittest.mock import patch
 import package_test as package_fixtures
 ROOT=package_fixtures.ROOT
 contract=package_fixtures.contract
@@ -71,27 +69,47 @@ class CanonicalCLI(unittest.TestCase):
         with sqlite3.connect(build/'.ambuild2/graph') as db:db.execute('DELETE FROM nodes WHERE id=2')
         self.cli('build/export-compile-commands.py',build,success=False)
 
-    def test_canonical_scanner_orchestration_with_offline_providers(self):
-        spec=importlib.util.spec_from_file_location('scanner_product',ROOT/'scripts/tools/make_sonar.py')
-        sonar=importlib.util.module_from_spec(spec);spec.loader.exec_module(sonar)
-        database=self.raw.parent/'compile_commands.json'
-        entries=[{'directory':str(self.root),'file':str(source),
-                  'arguments':['g++','-m32','-std=c++17','-c',str(source),'-o','unit.o']}
-                 for source in (self.root/'extension').rglob('*.cpp')]
-        database.write_text(json.dumps(entries));contract.write_receipt(self.raw,self.root,'linux')
-        cppcheck=self.root/'cppcheck-provider';scanner=self.root/'scanner-provider'
-        cppcheck.write_text('#!'+sys.executable+'\nimport sys\nprint("<results><errors/></results>",file=sys.stderr)\n')
-        scanner.write_text('#!'+sys.executable+'\nimport os,sys,json\nfrom pathlib import Path\nPath(os.environ["ARGV_LOG"]).write_text(json.dumps(sys.argv))\nprint("QUALITY GATE STATUS: PASSED")\n')
-        cppcheck.chmod(0o755);scanner.chmod(0o755);log=self.root/'argv.json'
-        env={'SONAR_CPPCHECK':str(cppcheck),'SONAR_SCANNER':str(scanner),'SONAR_HOST_URL':'https://example.invalid',
-             'SONAR_TOKEN':'offline-fixture-secret','SONAR_COVERAGE_RECEIPT':'','SONAR_PYTHON_COVERAGE_RECEIPT':'','ARGV_LOG':str(log)}
-        with patch.dict(os.environ,env):
-            sonar.run('analyze',database,root=self.root)
-            self.assertNotIn(env['SONAR_TOKEN'],log.read_text())
-            sonar.run('cppcheck',database,root=self.root)
-            scanner.write_text('#!'+sys.executable+'\nimport sys\nprint("ERROR parser failed",file=sys.stderr)\n')
-            with self.assertRaises(sonar.SonarError):sonar.run('analyze',database,root=self.root)
-        self.cli('tools/make_sonar.py','analyze','--compile-commands',database,
-                 success=False,env={**os.environ,**env,'SONAR_HOST_URL':''})
+
+    def test_documentation_symlinks_and_special_sources_rejected(self):
+        stage=self.root/'.build/guarded-stage'
+        self.cli('package/stage-artifact.py',self.root,self.raw,stage,'--platform','linux')
+        original=(stage/'docs/build/README.md').read_bytes()
+        document=self.root/'docs/build/README.md'
+        external=Path(self.temp.name)/'external.md';external.write_text('synthetic external document')
+        document.unlink();document.symlink_to(external)
+        self.cli('package/stage-artifact.py',self.root,self.raw,stage,'--platform','linux',success=False)
+        self.assertEqual((stage/'docs/build/README.md').read_bytes(),original)
+        document.unlink();document.symlink_to(self.root/'README.md')
+        self.cli('package/stage-artifact.py',self.root,self.raw,stage,'--platform','linux',success=False)
+        document.unlink();os.mkfifo(document)
+        self.cli('package/stage-artifact.py',self.root,self.raw,stage,'--platform','linux',success=False)
+
+    def test_linked_documentation_directory_rejected(self):
+        import shutil
+        directory=self.root/'docs/build'
+        external=Path(self.temp.name)/'external-docs'
+        shutil.copytree(directory,external);shutil.rmtree(directory);directory.symlink_to(external,target_is_directory=True)
+        self.cli('package/stage-artifact.py',self.root,self.raw,self.root/'.build/stage','--platform','linux',success=False)
+
+    def test_build_forwards_exact_sdk_and_inventory_path_before_changing_cwd(self):
+        deps=self.root/'fixture-deps';deps.mkdir()
+        sdk=self.root/'chosen SDK';sdk.mkdir()
+        for name in ('sourcemod-1.12','mmsource-1.12'):(deps/name).mkdir()
+        venv=deps/'.venv-linux/bin';venv.mkdir(parents=True)
+        (venv/'python').symlink_to(sys.executable)
+        ambuild=venv/'ambuild';ambuild.write_text('#!/bin/sh\nexit 99\n');ambuild.chmod(0o755)
+        record=self.root/'configure-arguments.json'
+        config=self.root/'probe-configure.py'
+        config.write_text('import os,sys,json\nfrom pathlib import Path\nPath(os.environ["SDK_PROBE_LOG"]).write_text(json.dumps({"args":sys.argv,"sdk":os.environ["HL2SDK_DIR"]}))\nraise SystemExit(1)\n')
+        env={**os.environ,'HL2SDK_DIR':str(sdk.relative_to(Path(self.temp.name))),
+             'CONFIGURE_SCRIPT':str(config),'ENV_FILE':str(self.root/'no-env'), 'SDK_PROBE_LOG':str(record)}
+        result=subprocess.run(['make','--no-print-directory','-f',str(ROOT/'Makefile'),'build-exts-linux',
+                               'LINUX_DEPS_DIR='+str(deps),'LINUX_BUILD_DIR='+str(self.root/'.build/sdk-build')],
+                              cwd=self.temp.name,env=env,capture_output=True,text=True)
+        self.assertNotEqual(result.returncode,0)
+        data=json.loads(record.read_text())
+        self.assertEqual(data['args'][data['args'].index('--hl2sdk-path')+1],str(sdk.resolve()))
+        self.assertEqual(data['sdk'],str(sdk.resolve()))
+        self.assertFalse((self.root/'.build/sdk-build/build-receipt.json').exists())
 
 if __name__=='__main__':unittest.main()

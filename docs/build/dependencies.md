@@ -15,6 +15,7 @@ pública que distribuir. La versión del producto permanece en
 | Python 3, pip, venv | Automatización y AMBuild | Host; pip actualizado solo al ejecutar deps | Versiones del host; externos |
 | GCC/G++ multilib o MSVC x86 | Compilador y linker | Host | No fijados; conservar warnings y flags de arquitectura |
 | GNU Make, Bash, PowerShell, Git, curl | Automatización por plataforma | Host | Externos |
+| coverage.py 7.13.5, GCC/gcov | Cobertura local de pruebas Python y C++ | Python fijado en `tests/requirements-coverage.txt`; gcov del compilador | Externos; recibos con hashes; fuera de CI y paquetes |
 | Cppcheck, SonarScanner, plugin sonar-cxx | Análisis local opcional | Instalación explícita del usuario | No descargados por build/tests; no empaquetados |
 
 Los fetch conservan las ramas existentes y actualizan solo al invocar explícitamente
@@ -31,3 +32,7 @@ no configuración de actualización ni contenido instalable.
 Al actualizar dependencias: seleccionar revisiones deliberadamente, revisar APIs,
 registrar hashes/SHA, invalidar caché, ejecutar Make de build/pruebas/paquete en
 cada SO y validar runtime por separado cuando cambien ABI o hooks.
+
+`HL2SDK_DIR` selecciona un directorio L4D2 concreto, incluso fuera de
+`LINUX_DEPS_DIR` / `WINDOWS_DEPS_DIR`. Build e inventario usan la misma ruta
+absoluta mediante `--hl2sdk-path`; no se actualiza el SDK seleccionado.

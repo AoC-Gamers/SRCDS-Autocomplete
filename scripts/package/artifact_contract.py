@@ -18,6 +18,19 @@ def safe_path(name):
     return name
 
 
+def source_file(root, name):
+    root = root.resolve()
+    candidate = root / safe_path(name)
+    current = candidate
+    while current != root:
+        if current.is_symlink():
+            raise ValueError(f'Linked product source: {name}')
+        current = current.parent
+    if not candidate.is_file() or not candidate.resolve().is_relative_to(root):
+        raise ValueError(f'Missing, special or external product source: {name}')
+    return candidate
+
+
 def manifest_paths(tree, prefix=''):
     paths = set()
     for key, value in tree.items():
@@ -102,9 +115,9 @@ def validate_files(files, root, platform, documentation=True):
         if name.endswith(('.so', '.dll')):
             check_binary(data, platform)
         elif not name.startswith('addons/'):
-            if data != (root / name).read_bytes():
+            if data != source_file(root, name).read_bytes():
                 raise ValueError(f'Stale documentation: {name}')
-        elif data != (root / ('extension/autocomplete.autoload' if name.endswith('.autoload') else name)).read_bytes():
+        elif data != source_file(root, 'extension/autocomplete.autoload' if name.endswith('.autoload') else name).read_bytes():
             raise ValueError(f'Stale runtime resource: {name}')
 
 

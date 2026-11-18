@@ -2,6 +2,7 @@
 // Controlled SDK providers for execution of the unchanged canonical extension.
 // These are not packaged and do not claim binary compatibility with SRCDS.
 #include <algorithm>
+#include <cassert>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -112,12 +113,13 @@ class GameConfs {
 public:
     IGameConfig config;
     bool load=true;
-    int closes=0;
+    int loads=0,closes=0;
     bool LoadGameConfigFile(const char *,IGameConfig **out,char *error,size_t size) {
+        ++loads;*out=&config;
         if(!load) { snprintf(error,size,"provider failure"); return false; }
-        *out=&config;return true;
+        return true;
     }
-    void CloseGameConfigFile(IGameConfig *) { ++closes; }
+    void CloseGameConfigFile(IGameConfig *config) { assert(config==&this->config); ++closes; }
 };
 class MemoryUtils {
 public:

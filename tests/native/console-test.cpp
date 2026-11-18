@@ -125,6 +125,8 @@ static void LifecycleCases() {
     api.cvars=nullptr;assert(!g_AutoCompleteHook.SDK_OnMetamodLoad(&api,error,sizeof(error),false));
     assert(!g_AutoCompleteHook.SDK_OnLoad(error,sizeof(error),false));api.cvars=&cvars;
     configs.load=false;assert(!g_AutoCompleteHook.SDK_OnLoad(error,sizeof(error),false));configs.load=true;
+    assert(configs.loads==configs.closes);
+    openFailures=2;assert(!g_AutoCompleteHook.SDK_OnLoad(error,sizeof(error),false));assert(configs.loads==configs.closes);
     void *handle=nullptr;openFailures=2;assert(!ResolveDedicatedLibrary(error,sizeof(error),&handle));
     openFailures=1;assert(ResolveDedicatedLibrary(error,sizeof(error),&handle));ReleaseDedicatedLibrary(handle);ReleaseDedicatedLibrary(nullptr);
     configs.config.value=nullptr;assert(!GetAddressFromKeyValues(&libraryMap,&configs.config,"key"));
@@ -141,6 +143,7 @@ static void LifecycleCases() {
     g_AutoCompleteHook.SDK_OnUnload();assert(CDetourManager::detour.destroyed && unregistrations==1);
     receiveTab=nullptr;g_AutoCompleteHook.SDK_OnUnload();assert(unregistrations==2);
     memory.result=nullptr;assert(!g_AutoCompleteHook.SDK_OnLoad(error,sizeof(error),false));memory.result=reinterpret_cast<void *>(0x1234);
+    assert(configs.loads==configs.closes);
 }
 int main(int argc,char **argv) {
     assert(argc==2);gameconfs=&configs;memutils=&memory;smutils=&utilities;

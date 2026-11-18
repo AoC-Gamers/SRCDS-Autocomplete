@@ -72,6 +72,11 @@ for required_dir in "$HL2SDK_DIR" "$SOURCEMOD_DIR" "$MMSOURCE_DIR"; do
   fi
 done
 
+# Resolve source directories before changing cwd; the receipt records these paths.
+HL2SDK_DIR="$(cd "$HL2SDK_DIR" && pwd -P)"
+SOURCEMOD_DIR="$(cd "$SOURCEMOD_DIR" && pwd -P)"
+MMSOURCE_DIR="$(cd "$MMSOURCE_DIR" && pwd -P)"
+
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
@@ -79,6 +84,7 @@ pushd "$BUILD_DIR" > /dev/null
 "$VENV_DIR/bin/python" "$CONFIGURE_SCRIPT" \
   --sdks l4d2 \
   --hl2sdk-root "$DEPS_DIR" \
+  --hl2sdk-path "$HL2SDK_DIR" \
   --mms-path "$MMSOURCE_DIR" \
   --sm-path "$SOURCEMOD_DIR" \
   --enable-optimize

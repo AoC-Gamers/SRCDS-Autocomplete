@@ -129,11 +129,19 @@ if (-not $cl) {
 Remove-Item -Recurse -Force $buildDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $buildDir | Out-Null
 
+$hl2sdkDir = (Resolve-Path -LiteralPath $hl2sdkDir).Path
+$sourcemodDir = (Resolve-Path -LiteralPath $sourcemodDir).Path
+$mmsourceDir = (Resolve-Path -LiteralPath $mmsourceDir).Path
+$env:HL2SDK_DIR = $hl2sdkDir
+$env:SOURCEMOD_DIR = $sourcemodDir
+$env:MMSOURCE_DIR = $mmsourceDir
+
 Push-Location $buildDir
 try {
   & $venvPython $configureScript `
     --sdks l4d2 `
     --hl2sdk-root $depsDir `
+    --hl2sdk-path $hl2sdkDir `
     --mms-path $mmsourceDir `
     --sm-path $sourcemodDir `
     --enable-optimize

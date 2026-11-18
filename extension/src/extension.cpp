@@ -336,17 +336,21 @@ bool AutoCompleteHook::SDK_OnLoad(char *error, size_t maxlength, bool late)
 	g_pCVar = cvarIface;
 #endif
 
-	IGameConfig *pGameConfig;
+	IGameConfig *pGameConfig = nullptr;
 	char conf_error[255];
 	if (!gameconfs->LoadGameConfigFile("autocomplete.games", &pGameConfig, conf_error, sizeof(conf_error)))
 	{
 		ke::SafeSprintf(error, maxlength, "Could not read autocomplete.games gamedata: %s", conf_error);
+		gameconfs->CloseGameConfigFile(pGameConfig);
 		return false;
 	}
 
 	void *dedicatedHandle = nullptr;
 	if (!ResolveDedicatedLibrary(error, maxlength, &dedicatedHandle))
+	{
+		gameconfs->CloseGameConfigFile(pGameConfig);
 		return false;
+	}
 
 	CDetourManager::Init(smutils->GetScriptingEngine(), nullptr);
 	bool ok = EnableReceiveTabDetour(dedicatedHandle, pGameConfig, error, maxlength);

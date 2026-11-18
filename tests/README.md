@@ -2,10 +2,10 @@
 
 `make test TEST_OUTPUT=<directorio-nuevo>` ejecuta regresiones de staging, ZIP,
 identidad y Make desde un cwd externo con espacios y fuentes sin `.git`.
-`make test-ci` usa la misma suite. El directorio existente se rechaza, no se
+`make test-ci` añade las suites nativas del decodificador y la consola. El directorio existente se rechaza, no se
 reutilizan logs y no se descargan SDKs.
 
-Los binarios de esas pruebas son cabeceras ELF32/PE32 sintéticas: permiten probar
+Los binarios de las pruebas de empaquetado son cabeceras ELF32/PE32 sintéticas: permiten probar
 rechazo de arquitectura, contenido y manipulación, pero no se pueden cargar.
 La compilación real se comprueba por separado mediante `build-exts-*` y los ZIP
 se validan mediante `validate-artifact-*`. Ni esas pruebas ni compilar acreditan
@@ -36,5 +36,8 @@ La suite forma parte de `test-ci`; solo su medición gcov es local.
 
 `canonical_cli_test.py` invoca los scripts canónicos sobre entradas de prueba
 aisladas, incluida exportación de órdenes compiladas, recibos, staging/ZIP,
-validación, identidad, limpieza y scanner con ejecutables simulados sin red.
+validación, identidad, limpieza y selección de SDK.
+La orquestación del scanner con ejecutables simulados sin red está en
+`sonar_tooling_test.py`, se ejecuta mediante `make sonar-tooling-test` y queda
+fuera de `test-ci` y Actions.
 No se remapean hits desde copias temporales a fuentes del repositorio.

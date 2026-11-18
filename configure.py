@@ -8,6 +8,8 @@ builder = run.PrepareBuild(sourcePath = sys.path[0])
 
 builder.options.add_option('--hl2sdk-root', type=str, dest='hl2sdk_root', default=None,
 		                   help='Root search folder for HL2SDKs')
+builder.options.add_option('--hl2sdk-path', type=str, dest='hl2sdk_path', default=None,
+                       help='Exact HL2SDK L4D2 directory (overrides root search)')
 builder.options.add_option('--mms-path', type=str, dest='mms_path', default=None,
                        help='Path to Metamod:Source')
 builder.options.add_option('--sm-path', type=str, dest='sm_path', default=None,
